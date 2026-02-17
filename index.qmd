@@ -1,0 +1,24 @@
+---
+title: "Evelyn Rodriguez"
+---
+
+## Hi there 👋
+
+I'm Evelyn! I'm a graduate student at Baruch College in New York City. I'm studying Statistics and expect to graduate in 2027. 
+
+I currently work in the banking industry as a web developer and have grown to find the intricacies of the world of banking and finance fascinating. I hope to use the skills gained in my graduate program to move into a data science role in the future. I'm excited to integrate statistical theory with my coding skills to tackle real world problems. 
+
+In my free time, I enjoy: 📖 Reading sci-fi and fantasy novels 🏺 Making pottery 🎮 Playing video games
+
+## Learn More
+### [My Experience](https://drive.google.com/file/d/141AeWh0hMdgxtmWJHXnPLeQFGkTA-9WQ/view?usp=sharing)
+
+
+### Connect With Me: [![github](https://www.readmecodegen.com/api/social-icon?name=github&color=%23ffffff)](https://github.com/er0driguez) [![LinkedIn](https://www.readmecodegen.com/api/social-icon?name=linkedin&color=ef4444)](https://www.linkedin.com/in/evelyn-rodriguez-nyc/)
+
+```{r}
+#| include: false
+1+1
+```
+--------------
+Last Updated: `r format(Sys.time(), "%A %m %d, %Y at %H:%M%p")`
