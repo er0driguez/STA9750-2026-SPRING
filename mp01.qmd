@@ -1,0 +1,350 @@
+---
+title: "Mini-Project 01: Assessing the Impact of SFFA on Campus Diversity One-Year Later"
+author: "Evelyn Rodriguez"
+editor:
+    mode: source
+format:
+    html:
+        toc: true
+        code-fold: true
+        code-summary: "Display Code"
+        code-overflow: wrap
+        code-tools: true
+        code-block-bg: true
+        code-block-border-left: "#6610f2"
+        highlight-style: "a11y"
+---
+```{r setup}
+library(gt)
+library(skimr)
+library(scales)
+```
+
+## Introduction
+
+A suitable introduction goes here. In this mini-project, I intend to demonstrate
+my skills at Data Summarization/Exploratory Analysis/Table Formatting in an analysis of Official Statistics/Demography data.
+
+## Data Acquisition and Preparation
+
+**Data Acquisition from IPEDS**
+
+```{r data-acquisition}
+#| warning: false 
+#' IPEDS Data for MP#01 - Data starts in 2010
+#' This function will acquire and standardize all data for MP#01
+#' from IPEDS (https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx)
+
+acquire_ipeds_data <- function(start_year=2010, end_year=2024){
+    library(tidyverse)
+    library(glue)
+    
+    data_dir <- file.path("data", "mp01")
+    
+    if(!dir.exists(data_dir)){
+        dir.create(data_dir, showWarnings=FALSE, recursive=TRUE)
+    }
+    
+    YEARS <- seq(start_year, end_year)
+    
+    EFA_ALL <- map(YEARS, function(yy){
+        if(yy <= 2022){
+            ef_url <- glue("https://nces.ed.gov/ipeds/datacenter/data/EF{yy}A.zip")
+            
+        } else {
+            ef_url <- glue("https://nces.ed.gov/ipeds/data-generator?year={yy}&tableName=EF{yy}A&HasRV=0&type=csv")
+        }
+        
+        ef_file <- file.path(data_dir, glue("ef{yy}a.csv.zip"))
+        
+        if(!file.exists(ef_file)){
+            message(glue("Downloading Enrollment Data for {yy} from {ef_url}"))
+            download.file(ef_url, destfile = ef_file, quiet=TRUE, mode="wb")    
+        }
+        
+        read_csv(ef_file, 
+                 show_col_types=FALSE) |>
+            mutate(year = yy, 
+                   # American Indian or Alaskan Native
+                   enrollment_m_aian = EFAIANM, 
+                   enrollment_f_aian = EFAIANW, 
+                   # Asian
+                   enrollment_m_asia = EFASIAM, 
+                   enrollment_f_asia = EFASIAW, 
+                   # Black or African-American, 
+                   enrollment_m_bkaa = EFBKAAM, 
+                   enrollment_f_bkaa = EFBKAAW, 
+                   # Hispanic 
+                   enrollment_m_hisp = EFHISPM, 
+                   enrollment_f_hisp = EFHISPW, 
+                   # Native Hawaiian or Other Pacific Islander 
+                   enrollment_m_nhpi = EFNHPIM, 
+                   enrollment_f_nhpi = EFNHPIW, 
+                   # White
+                   enrollment_m_whit = EFWHITM, 
+                   enrollment_f_whit = EFWHITW, 
+                   # Two or More Races
+                   enrollment_m_2mor = EF2MORM, 
+                   enrollment_f_2mor = EF2MORW, 
+                   # Unknown / Undisclosed Race
+                   enrollment_m_unkn = EFUNKNM, 
+                   enrollment_f_unkn = EFUNKNW, 
+                   # US Non-Resident
+                   enrollment_m_nral = EFNRALM, 
+                   enrollment_f_nral = EFNRALW, 
+            ) |> filter(
+                (EFALEVEL %in% c(2, 12)) | (LINE %in% c(1, 15))
+                # Per 2024 Data Dictionary, 
+                # - EFALEVEL 2 = undergrad 
+                # - EFALELVE 12 = grad
+                # - Line 1 = first year first time full-time undergrad
+                # - Line 15 = first year first time part-time undergrad
+            ) |> mutate(level = case_when(
+                       EFALEVEL == 2 ~ "all undergrad", 
+                       EFALEVEL == 12 ~ "all graduate",
+                       LINE %in% c(1, 15) ~ "first year undergrad"
+                   )
+            ) |>
+            select(institution_id = UNITID, 
+                   year, 
+                   level,
+                   starts_with("enrollment_")) |>
+            group_by(institution_id, 
+                     year, 
+                     level) |>
+            summarize(across(starts_with("enrollment_"), sum), 
+                      .groups = "drop")
+        
+    }) |> bind_rows()
+    
+    DESC_ALL <- map(YEARS, function(yy){
+        if(yy <= 2022){
+            hd_url <- glue("https://nces.ed.gov/ipeds/datacenter/data/HD{yy}.zip")
+            
+        } else {
+            hd_url <- glue("https://nces.ed.gov/ipeds/data-generator?year={yy}&tableName=HD{yy}&HasRV=0&type=csv")
+        }
+        
+        hd_file <- file.path(data_dir, glue("hd{yy}.csv.zip"))
+        
+        if(!file.exists(hd_file)){
+            message(glue("Downloading Institutional Descriptions for {yy} from {hd_url}"))
+            download.file(hd_url, destfile = hd_file, quiet=TRUE, mode="wb")    
+        }
+        
+        suppressWarnings(
+            read_csv(hd_file, 
+                 show_col_types=FALSE, 
+                 locale=locale(encoding=if_else(yy==2024, "utf-8", "windows-1252"))) |>
+            mutate(year = yy, 
+                   INSTNM) |> 
+            select(institution_id = UNITID, 
+                   institution_name = INSTNM, 
+                   state = STABBR, 
+                   year)
+        )
+        
+    }) |> bind_rows()
+    
+    inner_join(EFA_ALL, 
+               DESC_ALL, 
+               join_by(institution_id == institution_id, 
+                       year == year))
+    
+}
+
+IPEDS <- acquire_ipeds_data()
+
+```
+
+### Identify CUNY Schools
+
+**New column identifying CUNY schools by institution name**
+```{r identify-cuny-schools}
+# Adding is_cuny column
+
+IPEDS <- IPEDS |> 
+  mutate(is_cuny = str_detect(institution_name, "CUNY"))
+
+```
+
+### Identify UC and Cal State Schools
+
+**New column identifying California public schools**
+
+In order to correctly identify California public schools, it was necessary to include the '-' at the end of University of California string to prevent non-public universities with 'University of California' in their name from showing up. For example, "Bethesda University of California" is included in the data set but isn't apart of either the UC or CSU systems. 
+
+```{r identify-calpublic-schools}
+
+# Identifying Cali. public schools and creating is_calpublic column
+IPEDS <- IPEDS |>
+  mutate(is_calpublic = str_detect(institution_name, "California State University") | str_detect(institution_name, "University of California-"))
+
+```
+
+**California Public Schools**
+```{r calpublic-preview}
+# list of cali schools
+
+IPEDS_california_preview <- IPEDS |>
+  select(institution_name, is_calpublic) |>
+  filter(is_calpublic == TRUE) |>
+  group_by(institution_name) |> 
+  summarize(n_programs = n()) |> pull(institution_name)
+
+IPEDS_california_preview
+```
+
+
+## Exploratory Analysis
+
+### Initial EDA Pass
+Below are an initial glance at the IPEDS data utilizing the `glimpse` and `skim` functions.
+
+```{r initial-EDA-checks}
+glimpse(IPEDS)
+
+skim(IPEDS)
+
+```
+
+### Exploratory Questions
+
+#### Inline Values
+**1. How many distinct institutions appear in this data set?**
+
+```{r distinct-institutions}
+# Q1: distinct institutions
+
+distinct_institutions <- IPEDS |> 
+  summarize(n_institutions = n_distinct(institution_name))
+
+```
+
+This data set contains `r distinct_institutions$n_institutions` distinct institutions.
+
+**2. How many graduate students were enrolled at Baruch in 2024?**
+
+```{r baruch-graduate-students-2024}
+# Q2: graduate students at Baruch (2024)
+baruch_graduates_2024 <- IPEDS |>
+  filter(
+    str_detect(institution_name, "Baruch"), 
+    level == "all graduate", 
+    year == 2024
+  ) |>
+  mutate(total_graduates = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
+  pull(total_graduates)
+
+```
+
+**3. How many total students were enrolled at Baruch in 2024?**
+
+```{r baruch-total-students-2024}
+# Q3: Total students enrolled in Baruch (2024)
+baruch_total_2024 <- IPEDS |>
+  filter(
+    str_detect(institution_name, "Baruch"),
+    level %in% c("all undergrad", "all graduate"),
+    year == 2024
+  ) |>
+  mutate(total_students = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
+  summarize(total_enrollment = sum(total_students)) |>
+  pull(total_enrollment)
+
+```
+
+**4. Which institution had the highest number of enrolled female students in 2019?**
+
+```{r highest-female-students-2019}
+# Q4: institution w/ highest # enrolled f students (2019)
+
+female_enrollment_2019 <- IPEDS |>
+  filter(
+    year == 2019, 
+    level %in% c("all undergrad", "all graduate")
+  ) |>
+  mutate(total_female_students = rowSums(across(starts_with("enrollment_f_")), na.rm = TRUE)) |>
+  group_by(institution_id, institution_name) |>
+  summarize(total_female_enrollment = sum(total_female_students), .groups = "drop") |>
+  slice_max(total_female_enrollment, n = 1) |> 
+  select(institution_name, total_female_enrollment)
+
+
+```
+
+`r female_enrollment_2019$institution_name` had the highest female enrollment with `r comma(female_enrollment_2019$total_female_enrollment)` female students.
+
+**5. Which institution with over 1000 total students admitted the highest proportion of Native Hawaiian or Pacific Islander (nhpi) first-year undergraduates in 2024? **
+
+```{r highest-nhpi}
+nhpi_2024 <- IPEDS |>
+  filter(
+    year == 2024, 
+    level == "first year undergrad"
+  ) |>
+  mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    total_nhpi = rowSums(across(starts_with("enrollment_") & ends_with("nhpi")), na.rm = TRUE), 
+    percent_nhpi = total_nhpi / total_enrollment
+         ) |>
+  filter(total_enrollment >= 1000) |>
+  slice_max(percent_nhpi, n = 1) |>
+  select(institution_name, total_enrollment, total_nhpi, percent_nhpi)
+
+```
+
+`r nhpi_2024$institution_name` has the highest proportion of Native Hawaiian or Pacific Islander first year undergraduates (`r percent(nhpi_2024$percent_nhpi, accuracy=0.001)`) out of all universities with over 1000 total students admitted. 
+
+#### Tables
+
+**1. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+
+```{r highest-graduate-states}
+high_graduate_states <- IPEDS |>
+  filter(level == "all graduate") |>
+  mutate(total_graduate_students = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
+  group_by(state) |>
+  summarise(total_state_graduate_students = sum(total_graduate_students), .groups = "drop") |>
+  slice_max(total_state_graduate_students, n = 5) |>
+  select(state, total_state_graduate_students) |>
+  gt() |>
+  cols_label(
+    state = md("**State**"), 
+    total_state_graduate_students = md("**Total Graduate Students**")
+  ) |>
+  fmt_number(
+    columns = total_state_graduate_students, 
+    decimals = 0
+  ) |>
+  tab_header(
+    title = md("**Top 5 States by Graduate Enrollment**"), 
+    subtitle = "Enrollment combined for all years across institutions reporting to IPEDS"
+  )
+
+high_graduate_states
+```
+
+**2. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+
+
+**3. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+
+
+**4. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+
+**5. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+
+## Final Insights and Deliverable
+
+Code related to the final deliverable of the assignment goes here. 
+
+
+
+------------------------------------------------------------------------
+
+This work ©2026 by Evelyn Rodriguez was initially prepared as a Mini-Project for
+STA 9750 at Baruch College. More details about this course can be found at
+[the course site](https://michael-weylandt.com/STA9750) and instructions for
+this assignment can be found at 
+[MP #01](https://michael-weylandt.com/STA9750/mini/mini01.html)
