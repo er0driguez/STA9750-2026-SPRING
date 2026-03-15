@@ -296,6 +296,8 @@ nhpi_2024 <- IPEDS |>
 
 `r nhpi_2024$institution_name` has the highest proportion of Native Hawaiian or Pacific Islander first year undergraduates (`r percent(nhpi_2024$percent_nhpi, accuracy=0.001)`) out of all universities with over 1000 total students admitted. 
 
+---
+
 #### Tables
 
 **1. Which 5 states had the highest number of graduate students across all institutions located in that state?**
@@ -325,21 +327,233 @@ high_graduate_states <- IPEDS |>
 high_graduate_states
 ```
 
-**2. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+**2. In 2024, how many first year undergraduate students were enrolled at CUNY colleges and which colleges did they attend? Report both absolute enrollment numbers and percent of total first-year undergraduates?**
+
+```{r cuny-first-year-enrollment}
+
+cuny_first_year_enrollment_2024 <- IPEDS |> 
+  filter(
+    year == 2024,
+    is_cuny == TRUE, 
+    level == "first year undergrad"
+  ) |>
+  mutate(first_year_total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
+  select(institution_name, first_year_total_enrollment) |>
+  mutate(percent_total = first_year_total_enrollment/ sum(first_year_total_enrollment)) |>
+  gt() |>
+  cols_label(
+    institution_name = md("**CUNY College**"), 
+    first_year_total_enrollment = md("**First-Year<br>Enrollment at College**"),
+    percent_total = md("**% of Total<br>First-Year Enrollment**")
+  ) |>
+  fmt_percent(
+    columns = percent_total, 
+    decimals = 2
+  ) |>
+  grand_summary_rows(
+    columns = first_year_total_enrollment, 
+    fns = list(Total = ~ sum(.)),
+    fmt = ~ fmt_number(., decimals = 0)
+  ) |>
+  cols_align(
+    align = "center",
+    columns = c(first_year_total_enrollment, percent_total)
+  ) |>
+  cols_width(institution_name ~ px(150)) |>
+  tab_header(
+    title = md("**CUNY First-Year Undergraduate Enrollment (2024)**"),
+    subtitle = "Enrollment by College"
+  )
+
+cuny_first_year_enrollment_2024
+
+```
 
 
-**3. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+**3. How has Baruch’s total undergraduate enrollment changed over the study period? Report both enrollment numbers and percent change year-over-year.**
+
+```{r undergrad-change-YoY}
+
+baruch_undergrad_change_yoy <- IPEDS |>
+  filter(
+    is_cuny == TRUE, 
+    str_detect(institution_name, "Baruch"), 
+    level == "all undergrad"
+  ) |> 
+  mutate(total_undergrad_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
+  select(year, total_undergrad_enrollment) |>
+  arrange(year) |>
+  mutate(
+    change_yoy = total_undergrad_enrollment - lag(total_undergrad_enrollment), 
+    percent_change_yoy = change_yoy / lag(total_undergrad_enrollment)
+  ) |>
+  gt() |>
+  cols_label(
+    year = md("**Year**"), 
+    total_undergrad_enrollment = md("**Undergraduate<br>Enrollment**"),
+    change_yoy = md("**Change<br>Year-over-Year**"), 
+    percent_change_yoy = md("**% Change<br>Year-over-Year**")
+  ) |>
+  fmt_percent(
+    columns = percent_change_yoy, 
+    decimals = 2
+  ) |>
+  tab_style(
+    style = cell_text(color = "darkgreen"),
+    locations = cells_body(columns = c(change_yoy, percent_change_yoy), 
+                           rows = change_yoy > 0)
+  ) |>
+  tab_style(
+    style = cell_text(color = "darkred"),
+    locations = cells_body(columns = c(change_yoy, percent_change_yoy),
+                           rows = change_yoy < 0)
+  ) |>
+  sub_missing(missing_text = "—") |>
+  cols_align(align = "center") |>
+  tab_header(
+    title = "CUNY Baruch College Undergraduate Enrollment (2010-2024)",
+    subtitle = "Total enrollment change year-over-year"
+  )
+  
+baruch_undergrad_change_yoy
+```
 
 
-**4. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+**4. At what 5 institutions did the fraction of white students decrease the most over the period from 2010 to 2020?**
 
-**5. Which 5 states had the highest number of graduate students across all institutions located in that state?**
+```{r white-decline}
+
+white_decline <- IPEDS |>
+  filter(
+    level %in% c("all undergrad", "all graduate"), 
+    year %in% c(2010, 2020)
+  ) |>
+  mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    total_white_enrollment = rowSums(across(starts_with("enrollment_") & ends_with("whit")), na.rm = TRUE)
+  ) |>
+  group_by(institution_id, institution_name, state, year) |>
+  summarize(
+    school_total_enrollment = sum(total_enrollment),
+    school_total_white_enrollment = sum(total_white_enrollment),
+    .groups = "drop"
+  ) |>
+  mutate(percent_white = school_total_white_enrollment / school_total_enrollment) |>
+  filter(school_total_enrollment >= 1000) |>
+  select(institution_id, institution_name, state, year, percent_white) |>
+  pivot_wider(
+    names_from = year,
+    values_from = percent_white,
+    names_prefix = "percent_white_"
+  ) |> 
+  filter(!is.na(percent_white_2010), !is.na(percent_white_2020)) |>
+  mutate(percent_change = percent_white_2020 - percent_white_2010) |>
+  slice_min(percent_change, n=5) |>
+  select(institution_name, state, percent_white_2010, percent_white_2020, percent_change) |>
+  gt() |>
+  cols_label(
+    institution_name = md("**School**"),
+    state = md("**State**"),
+    percent_white_2010 = md("**% White<br>(2010)**"),
+    percent_white_2020 = md("**% White<br>(2020)**"),
+    percent_change = md("**Change**")
+  ) |>
+  cols_align(
+    align = "center",
+    columns = c(state, percent_white_2010, percent_white_2020, percent_change)
+  ) |>
+  cols_width(institution_name ~ px(100)) |>
+  fmt_percent(
+    columns = c(percent_white_2010, percent_white_2020, percent_change),
+    decimals = 2
+  ) |>
+  tab_style(
+    style = cell_text(color = "darkred"),
+    locations = cells_body(columns = percent_change)
+  ) |>
+  tab_header(
+    title = md("**Largest Decreases in White Student Enrollment (2010-2020)**"),
+    subtitle = "For schools with 1,000+ total enrollment"
+  )
+
+white_decline
+
+```
+
+
+**5. In which 3 states did the fraction of female undergraduates increase the most over the period from 2010 to 2024?**
+
+```{r female-undergrad-increase}
+
+female_undergrad_increase <- IPEDS |>
+  filter(
+    level == "all undergrad", 
+    year %in% c(2010, 2024)
+  ) |>
+  mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    total_female_enrollment = rowSums(across(starts_with("enrollment_f_")), na.rm = TRUE)
+  ) |>
+  group_by(state, year) |>
+  summarize(
+    state_total_enrollment = sum(total_enrollment),
+    state_total_female_enrollment = sum(total_female_enrollment),
+    .groups = "drop"
+  ) |>
+  mutate(percent_female = state_total_female_enrollment / state_total_enrollment) |>
+  select(state, year, state_total_enrollment, percent_female) |>
+  pivot_wider(
+    names_from = year, 
+    values_from = c(percent_female, state_total_enrollment),
+    names_sep = "_"
+  ) |>
+  filter(
+    !is.na(percent_female_2010),
+    !is.na(percent_female_2024)
+  ) |>
+  mutate(percent_change = percent_female_2024 - percent_female_2010) |>
+  slice_max(percent_change, n=3) |>
+  select(state, percent_female_2010, percent_female_2024, percent_change, state_total_enrollment_2010, state_total_enrollment_2024) |>
+  gt() |>
+  cols_label(
+    state = md("**State**"),
+    percent_female_2010 = md("**% Female<br>(2010)**"),
+    percent_female_2024 = md("**% Female<br>(2024)**"),
+    percent_change = md("**Change**"),
+    state_total_enrollment_2010 = md("**Total Enrollment<br>(2010)**"),
+    state_total_enrollment_2024 = md("**Total Enrollment<br>(2024)**")
+  ) |>
+  cols_align(
+    align = "center",
+  ) |>
+  fmt_percent(
+    columns = c(percent_female_2010, percent_female_2024, percent_change),
+    decimals = 2
+  ) |>
+  tab_style(
+    style = cell_text(color = "darkgreen"),
+    locations = cells_body(columns = percent_change)
+  ) |>
+  tab_header(
+    title = md("**Largest Increases in Female Undergraduate Enrollment (2010-2024)**"),
+    subtitle = "All states and territories with data in both 2010 and 2024"
+  )
+
+female_undergrad_increase
+
+```
+
 
 ## Final Insights and Deliverable
 
 Code related to the final deliverable of the assignment goes here. 
 
 
+::: {.callout-note title="AI Usage Statement" collapse="true"}
+
+Claude was used to look up how to use functions that are new to me (such as sumRows), pull up documentation on gt, r, and tidyverse packages, and to check over code blocks for efficiency. 
+
+:::
 
 ------------------------------------------------------------------------
 
