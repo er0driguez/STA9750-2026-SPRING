@@ -9,25 +9,31 @@ format:
         code-fold: true
         code-summary: "Display Code"
         code-overflow: wrap
-        code-tools: true
         code-block-bg: true
         code-block-border-left: "#6610f2"
         highlight-style: "a11y"
 ---
-```{r setup}
+```{r setup, include=FALSE}
 library(gt)
 library(skimr)
 library(scales)
+library(ggplot2)
 ```
 
 ## Introduction
 
-A suitable introduction goes here. In this mini-project, I intend to demonstrate
-my skills at Data Summarization/Exploratory Analysis/Table Formatting in an analysis of Official Statistics/Demography data.
+In 2023, the US Supreme Court ruled in [*Students for Fair Admissions v. Harvard*](https://en.wikipedia.org/wiki/Students_for_Fair_Admissions_v._Harvard) (SFFA) that race-conscious practices in college admission processes were unconstitutional and effectively outlawed affirmative action in college admissions. Last year, the Integrated Postsecondary Education Data System (IPEDS), a federally managed data system, released the first batch of college enrollment data since the SFFA ruling was handed down. 
+
+In this mini-project, I intend to summarize and explore the federal demography data provided in IPEDS to compare the most recent year-over-year statistics for 2024 enrollment with historical trends to draw initial insights. From this, I will complete an analysis of the possible effects on student demographics when affirmative action is taken out of the equation. The main question I seek to ask and answer is *"Did affirmative action programs help, hinder or not at all affect college admissions?"*.
+
+To do this, I employ `dplyr` for tabular data analysis and present my results on a web page created with `quarto`. Finally, I will describe the impact of SFFA on admitted student demographics at my alma mater, University of Maryland - College Park, from the perspective of the university president writing an op-ed for the UMD school newspaper, The Diamondback.  
+
 
 ## Data Acquisition and Preparation
 
-**Data Acquisition from IPEDS**
+### Data Acquisition from IPEDS
+
+Data is acquired from [IPEDS](https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx) and a data frame called `IPEDS` is created with fall enrollment and institution description data, which will be used for any analysis in this project. The data is further cleaned and prepared to identify enrollment groups by race/ethnicity and gender while institutions are identify institution names, ids and states.
 
 ```{r data-acquisition}
 #| warning: false 
@@ -157,22 +163,25 @@ IPEDS <- acquire_ipeds_data()
 
 ```
 
-### Identify CUNY Schools
+### Data Preparation
 
-**New column identifying CUNY schools by institution name**
+#### Identify CUNY Schools
+
+CUNY institutions are identified by using `mutate()` to create a new `is_cuny` column in IPEDS and `str_detect()` is used to identify institution names that contain "CUNY" or "City University of New York".
+
 ```{r identify-cuny-schools}
-# Adding is_cuny column
+# Adding is_cuny column to IPEDS data frame and identifying CUNY institutions
 
 IPEDS <- IPEDS |> 
   mutate(is_cuny = str_detect(institution_name, "CUNY"))
 
 ```
 
-### Identify UC and Cal State Schools
+#### Identify UC and Cal State Schools
 
-**New column identifying California public schools**
+California public universities are identified using `mutate()` to create a new `is_calpublic` column in IPEDS that uses `str_detect()` to identify institution names that contain "California State University" or "University of California. 
 
-In order to correctly identify California public schools, it was necessary to include the '-' at the end of University of California string to prevent non-public universities with 'University of California' in their name from showing up. For example, "Bethesda University of California" is included in the data set but isn't apart of either the UC or CSU systems. 
+***Note:** In order to correctly identify California public schools, it was necessary to include "-" at the end of the University of California string to prevent non-public universities with 'University of California' in their name from showing up. For example, "Bethesda University of California" is included in the data set but isn't apart of either the UC or CSU systems.* 
 
 ```{r identify-calpublic-schools}
 
@@ -180,26 +189,28 @@ In order to correctly identify California public schools, it was necessary to in
 IPEDS <- IPEDS |>
   mutate(is_calpublic = str_detect(institution_name, "California State University") | str_detect(institution_name, "University of California-"))
 
-```
-
-**California Public Schools**
-```{r calpublic-preview}
 # list of cali schools
 
-IPEDS_california_preview <- IPEDS |>
-  select(institution_name, is_calpublic) |>
+IPEDS_calpublic_list <- IPEDS |>
   filter(is_calpublic == TRUE) |>
-  group_by(institution_name) |> 
-  summarize(n_programs = n()) |> pull(institution_name)
+  distinct(institution_name) |>
+  arrange(institution_name) |>
+  pull(institution_name)
 
-IPEDS_california_preview
+```
+
+**California State Public Schools**
+```{r calpublic-list, echo = FALSE}
+
+IPEDS_calpublic_list
+
 ```
 
 
 ## Exploratory Analysis
 
 ### Initial EDA Pass
-Below are an initial glance at the IPEDS data utilizing the `glimpse` and `skim` functions.
+Below are an initial glance at the IPEDS data utilizing the `glimpse` and `skim` functions to summarize the `IPEDS` data frame.
 
 ```{r initial-EDA-checks}
 glimpse(IPEDS)
@@ -214,7 +225,7 @@ skim(IPEDS)
 **1. How many distinct institutions appear in this data set?**
 
 ```{r distinct-institutions}
-# Q1: distinct institutions
+# number of distinct institutions in IPEDS
 
 distinct_institutions <- IPEDS |> 
   summarize(n_institutions = n_distinct(institution_name))
@@ -226,22 +237,23 @@ This data set contains `r distinct_institutions$n_institutions` distinct institu
 **2. How many graduate students were enrolled at Baruch in 2024?**
 
 ```{r baruch-graduate-students-2024}
-# Q2: graduate students at Baruch (2024)
+# number of graduate students at Baruch (2024)
 baruch_graduates_2024 <- IPEDS |>
   filter(
     str_detect(institution_name, "Baruch"), 
     level == "all graduate", 
     year == 2024
   ) |>
-  mutate(total_graduates = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
-  pull(total_graduates)
+  mutate(total_graduates = rowSums(across(starts_with("enrollment_")), na.rm = TRUE))
 
 ```
+
+In 2024, `r comma(baruch_graduates_2024$total_graduates)` graduate students were enrolled at Baruch.
 
 **3. How many total students were enrolled at Baruch in 2024?**
 
 ```{r baruch-total-students-2024}
-# Q3: Total students enrolled in Baruch (2024)
+# number of total students enrolled in Baruch (2024)
 baruch_total_2024 <- IPEDS |>
   filter(
     str_detect(institution_name, "Baruch"),
@@ -249,15 +261,16 @@ baruch_total_2024 <- IPEDS |>
     year == 2024
   ) |>
   mutate(total_students = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
-  summarize(total_enrollment = sum(total_students)) |>
-  pull(total_enrollment)
+  summarize(total_enrollment = sum(total_students))
 
 ```
+
+In 2024, `r comma(baruch_total_2024$total_enrollment)` students were enrolled at Baruch.
 
 **4. Which institution had the highest number of enrolled female students in 2019?**
 
 ```{r highest-female-students-2019}
-# Q4: institution w/ highest # enrolled f students (2019)
+# institution w/ highest # enrolled f students (2019)
 
 female_enrollment_2019 <- IPEDS |>
   filter(
@@ -269,7 +282,6 @@ female_enrollment_2019 <- IPEDS |>
   summarize(total_female_enrollment = sum(total_female_students), .groups = "drop") |>
   slice_max(total_female_enrollment, n = 1) |> 
   select(institution_name, total_female_enrollment)
-
 
 ```
 
@@ -303,6 +315,8 @@ nhpi_2024 <- IPEDS |>
 **1. Which 5 states had the highest number of graduate students across all institutions located in that state?**
 
 ```{r highest-graduate-states}
+
+# identifying 5 states with highest # grad students in state
 high_graduate_states <- IPEDS |>
   filter(level == "all graduate") |>
   mutate(total_graduate_students = rowSums(across(starts_with("enrollment_")), na.rm = TRUE)) |>
@@ -315,6 +329,7 @@ high_graduate_states <- IPEDS |>
     state = md("**State**"), 
     total_state_graduate_students = md("**Total Graduate Students**")
   ) |>
+  cols_align(align = "center") |>
   fmt_number(
     columns = total_state_graduate_students, 
     decimals = 0
@@ -327,10 +342,11 @@ high_graduate_states <- IPEDS |>
 high_graduate_states
 ```
 
-**2. In 2024, how many first year undergraduate students were enrolled at CUNY colleges and which colleges did they attend? Report both absolute enrollment numbers and percent of total first-year undergraduates?**
+**2. In 2024, how many first year undergraduate students were enrolled at CUNY colleges and which colleges did they attend?**
 
 ```{r cuny-first-year-enrollment}
 
+# number of first year undergrad CUNY students enrolled in CUNY by school (2024)
 cuny_first_year_enrollment_2024 <- IPEDS |> 
   filter(
     year == 2024,
@@ -370,10 +386,11 @@ cuny_first_year_enrollment_2024
 ```
 
 
-**3. How has Baruch’s total undergraduate enrollment changed over the study period? Report both enrollment numbers and percent change year-over-year.**
+**3. How has Baruch’s total undergraduate enrollment changed over the study period?**
 
 ```{r undergrad-change-YoY}
 
+# baruch total undergrad enrollment change from 2010-2024
 baruch_undergrad_change_yoy <- IPEDS |>
   filter(
     is_cuny == TRUE, 
@@ -423,6 +440,7 @@ baruch_undergrad_change_yoy
 
 ```{r white-decline}
 
+# identify 5 schools with largest decline in white students from 2010 to 2020
 white_decline <- IPEDS |>
   filter(
     level %in% c("all undergrad", "all graduate"), 
@@ -483,7 +501,11 @@ white_decline
 
 **5. In which 3 states did the fraction of female undergraduates increase the most over the period from 2010 to 2024?**
 
+The Federated States of Micronesia, American Samoa, and New Hampshire saw the largest increases in the fraction of female undergraduate students from 2010 to 2024.
+
 ```{r female-undergrad-increase}
+
+# identify 3 states with largest fraction of female undergrad enrollment increase (2010-2024)
 
 female_undergrad_increase <- IPEDS |>
   filter(
@@ -544,14 +566,649 @@ female_undergrad_increase
 ```
 
 
-## Final Insights and Deliverable
 
-Code related to the final deliverable of the assignment goes here. 
+## The Diamondback 
+
+#### Op-Ed Data Analysis Code
+```{r umd-enrollment-2024}
+
+# 2024 UMD enrollment broken down by level and gender
+ 
+umd_enrollment_2024 <- IPEDS |>
+  filter(
+    institution_id == 163286, 
+    year == 2024,
+    level %in% c("all undergrad", "all graduate")
+  ) |>
+  mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    total_female = rowSums(across(starts_with("enrollment_f_")), na.rm = TRUE),
+    total_male = rowSums(across(starts_with("enrollment_m_")), na.rm = TRUE)
+  ) |>
+  group_by(level) |>
+  summarise(
+    total_enrollment = sum(total_enrollment),
+    total_female_enrollment = sum(total_female),
+    total_male_enrollment = sum(total_male),
+    .groups = "drop"
+  ) |>
+  mutate(
+    percent_female = total_female_enrollment / total_enrollment,
+    percent_male = total_male_enrollment / total_enrollment
+  )
+
+umd_grad_2024 <- umd_enrollment_2024 |>
+  filter(level == "all graduate")
+
+umd_undergrad_2024 <- umd_enrollment_2024 |>
+  filter(level == "all undergrad")
+
+
+# 2024 all undergrad student enrollment demographics
+
+undergrad_student_races_2024 <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    year == 2024, 
+    level == "all undergrad"
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE)
+  ) |> 
+  pivot_longer(
+    cols = everything(), 
+    names_to = "group",
+    values_to = "enrollment"
+  ) |>
+  mutate(percent_enrollment = enrollment / sum(enrollment))
+
+# percent enrollment by race values for 2024 undergrad student enrollment demographics
+race_percents_2024 <- undergrad_student_races_2024 |>
+  select(group, percent_enrollment) |>
+  deframe()
+
+```
+
+```{r yoy-first-year-undergrad-demographics}
+# YoY comparison of first-year first time undergraduate class 2024
+
+first_undergrad_demo_yoy <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    year %in% c(2023, 2024),
+    level == "first year undergrad"
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE),
+    .by = year
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "race",
+    values_to = "enrollment"
+  ) |>
+  pivot_wider(
+    names_from = year,
+    values_from = enrollment,
+    names_prefix = "enrollment_"
+  ) |>
+  mutate(
+    change_yoy = enrollment_2024 - enrollment_2023,
+    percent_change_yoy = change_yoy / enrollment_2023
+  ) |>
+  select(race, enrollment_2023, enrollment_2024, change_yoy, percent_change_yoy) |>
+  mutate(
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+      )
+  )
+
+# percent change values for first-year undergrad demo
+percent_change_first_year <- first_undergrad_demo_yoy |>
+  select(race, percent_change_yoy) |>
+  deframe()
+
+# table of first-year undergrad demographics YoY comparison
+first_undergrad_demo_yoy_table <- first_undergrad_demo_yoy |>
+  gt() |>
+  cols_label(
+    race = md("**Race**"), 
+    enrollment_2023 = md("**2023**"),
+    enrollment_2024 = md("**2024**"), 
+    change_yoy = md("**Change<br>YoY**"),
+    percent_change_yoy = md("**% Change<br>YoY**")
+  ) |>
+  cols_align(
+    align = "center",
+    columns = c(enrollment_2023, enrollment_2024, change_yoy, percent_change_yoy)
+  ) |>
+  cols_width(race ~ px(150)) |>
+  fmt_percent(
+    columns = percent_change_yoy, 
+    decimals = 2
+  ) |>
+  tab_spanner(
+    label = md("**Enrollment**"),
+    columns = c(enrollment_2023, enrollment_2024)
+  ) |>
+  tab_style(
+    style = cell_text(color = "darkgreen"),
+    locations = cells_body(columns = c(change_yoy, percent_change_yoy),
+                           rows = change_yoy > 0)
+  ) |>
+  tab_style(
+    style = cell_text(color = "darkred"),
+    locations = cells_body(columns = c(change_yoy, percent_change_yoy),
+                           rows = change_yoy < 0)
+  ) |>
+  tab_header(
+    title = md("**First Year Undergraduate Enrollment by Race/Ethnicity**"), 
+    subtitle = "Year-over-Year change from 2023 to 2024"
+  )
+
+```
+
+```{r yoy-undergrad-and-grad-demographics}
+
+# yoy demographics broken down by graduate and undergrad levels (2023-2024)
+undergrad_grad_demo_yoy <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    year %in% c(2023, 2024),
+    level %in% c("all undergrad", "all graduate")
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE),
+    .by    = c(year, level)
+  ) |>
+  pivot_longer(
+    cols = -c(year, level),
+    names_to = "race", 
+    values_to = "enrollment"
+  ) |>
+  pivot_wider(
+    names_from = c(year, level),
+    values_from = enrollment, 
+    names_sep = "_"
+  ) |>
+  mutate(
+    change_undergrad = `2024_all undergrad` - `2023_all undergrad`,
+    change_graduate = `2024_all graduate`  - `2023_all graduate`,
+    percent_change_undergrad = change_undergrad / `2023_all undergrad`,
+    percent_change_graduate = change_graduate  / `2023_all graduate`
+  ) |>
+  mutate(
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+    )
+  ) |>
+  select(
+    race, 
+    `2023_all undergrad`, `2024_all undergrad`, change_undergrad, percent_change_undergrad,
+    `2023_all graduate`,  `2024_all graduate`,  change_graduate,  percent_change_graduate
+  )
+
+# YoY percent change values for undergrads
+
+percent_change_undergrad <- undergrad_grad_demo_yoy |>
+  select(race, percent_change_undergrad) |>
+  deframe()
+
+# table for undergrad/grad demo yoy stats () COMMENTED OUT DUE TO SCOPE CREEP
+
+# undergrad_grad_demo_yoy_table <- undergrad_grad_demo_yoy |>
+#   gt() |>
+#   cols_label(
+#     race = "Race",
+#     `2023_all undergrad` = "2023",
+#     `2024_all undergrad` = "2024",
+#     change_undergrad = "Change",
+#     percent_change_undergrad = "% Change",
+#     `2023_all graduate` = "2023",
+#     `2024_all graduate` = "2024",
+#     change_graduate = "Change",
+#     percent_change_graduate = "% Change"
+#   ) |>
+#   fmt_percent(
+#     columns = c(percent_change_undergrad, percent_change_graduate),
+#     decimals = 2
+#   ) |>
+#   tab_spanner(
+#     label = "Undergraduate",
+#     columns = c(`2023_all undergrad`, `2024_all undergrad`, change_undergrad, percent_change_undergrad)
+#   ) |>
+#   tab_spanner(
+#     label = "Graduate",
+#     columns = c(`2023_all graduate`, `2024_all graduate`, change_graduate, percent_change_graduate)
+#   ) |>
+#   tab_header(
+#     title = "Enrollment by Race/Ethnicity",
+#     subtitle = "Undergraduate and Graduate year-over-year change from 2023 to 2024"
+#   )  
+
+#pie chart with YoY demographics at the graduate and undergrad levels (2023-2024)
+all_students_demo_pie <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    year %in% c(2023, 2024),
+    level %in% c("all undergrad", "all graduate")
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE),
+    .by    = c(year, level)
+  ) |>
+  pivot_longer(
+    cols = -c(year, level),
+    names_to = "race", 
+    values_to = "enrollment"
+  ) |>
+  mutate(
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+    ),
+    level = case_match(level,
+      "all undergrad" ~ "Undergraduate",
+      "all graduate"  ~ "Graduate"
+    )
+  ) |>
+  ggplot(aes(x = "", y = enrollment, fill = race)) +
+  geom_col(width = 1, color = "grey", linewidth = 0.5) +
+  coord_polar(theta = "y") +
+  facet_grid(level ~ year, scales = "free") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(
+    title = "Enrollment by Race/Ethnicity",
+    fill = NULL
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.margin     = margin(t = 0, r = 0, b = 0, l = 0),
+    legend.box.margin = margin(t = 0, r = 0, b = 0, l = 0),
+    strip.text = element_text(size = 13, face = "bold"),
+    plot.title = element_text(size = 14, hjust = 0.5, margin = margin(b = 10)),
+    legend.text = element_text(size = 10),
+    legend.key.size = unit(0.8, "lines")
+  ) +
+  guides(fill = guide_legend(nrow = 4))
+
+```
+
+```{r yoy-combined-level-student-demographics}
+
+#yoy demographics with grad and undergrad levels combined 
+
+combined_student_demo_yoy <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    year %in% c(2023, 2024),
+    level %in% c("all undergrad", "all graduate")
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE),
+    .by    = year
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "race", 
+    values_to = "enrollment"
+  ) |>
+  pivot_wider(
+    names_from = year,
+    values_from = enrollment, 
+    names_prefix = "enrollment_"
+  ) |>
+  mutate(
+    change_yoy = enrollment_2024 - enrollment_2023,
+    percent_change_yoy = change_yoy / enrollment_2023,
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+    )
+  ) |>
+  select(race, enrollment_2023, enrollment_2024, change_yoy, percent_change_yoy)
+
+```
+
+```{r diversity}
+
+# diversity score yoy (2023-2024)
+diversity_yoy <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    level == "all undergrad",
+    year %in% c(2023, 2024)
+  ) |>
+  mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    total_white = rowSums(across(starts_with("enrollment_") & ends_with("whit")), na.rm = TRUE),
+    total_asian = rowSums(across(starts_with("enrollment_") & ends_with("asia")), na.rm = TRUE),
+    diversity_score = (total_enrollment - total_white - total_asian) / total_enrollment
+  ) |>
+  select(year, total_enrollment, total_white, total_asian, diversity_score) |>
+  arrange(year) |>
+  mutate(diversity_change = diversity_score - lag(diversity_score))
+
+
+# diversity score trend 2010-2024
+diversity_trend <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    level == "all undergrad"
+  ) |>
+   mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    total_white = rowSums(across(starts_with("enrollment_") & ends_with("whit")), na.rm = TRUE),
+    total_asian = rowSums(across(starts_with("enrollment_") & ends_with("asia")), na.rm = TRUE),
+    diversity_score = (total_enrollment - total_white - total_asian) / total_enrollment
+  ) |>
+  select(year, total_enrollment, diversity_score) |>
+  arrange(year) |>
+  mutate(change_yoy = diversity_score - lag(diversity_score))
+
+
+# values from diversity score column
+diversity_by_year <- diversity_trend |>
+  select(year, diversity_score) |>
+  deframe()
+
+# values from diversity change by year column
+diversity_change_by_year <- diversity_trend |>
+  select(year, change_yoy) |>
+  deframe()
+
+```
+
+```{r group-with-largest-enrollment-increase}
+
+#calculating undergrad demographic enrollment changes from 2010 to 2024
+enrollment_change_demographics <- IPEDS |>
+  filter(
+    institution_id == 163286,
+    level == "all undergrad",
+    year %in% c(2010, 2024)
+  ) |>
+  mutate(
+    total_enrollment = rowSums(across(starts_with("enrollment_")), na.rm = TRUE),
+    aian = enrollment_m_aian + enrollment_f_aian,
+    asia = enrollment_m_asia + enrollment_f_asia,
+    bkaa = enrollment_m_bkaa + enrollment_f_bkaa,
+    hisp = enrollment_m_hisp + enrollment_f_hisp,
+    nhpi = enrollment_m_nhpi + enrollment_f_nhpi,
+    whit = enrollment_m_whit + enrollment_f_whit,
+    `2mor` = enrollment_m_2mor + enrollment_f_2mor,
+    unkn = enrollment_m_unkn + enrollment_f_unkn,
+    nral = enrollment_m_nral + enrollment_f_nral
+  ) |>
+  select(year, total_enrollment, aian:nral) |>
+  pivot_longer(
+    cols = -c(year, total_enrollment),
+    names_to = "race",
+    values_to = "enrollment"
+  ) |>
+  mutate(percent_enrollment = enrollment / total_enrollment) |>
+  select(year, race, percent_enrollment) |>
+  pivot_wider(
+    names_from = year,
+    values_from = percent_enrollment,
+    names_prefix = "percent_enrollment_"
+  ) |>
+  mutate(
+    percent_change = percent_enrollment_2024 - percent_enrollment_2010,
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+    )
+  ) |>
+  arrange(desc(percent_change)) |>
+  select(race, percent_enrollment_2010, percent_enrollment_2024, percent_change)
+
+# values from percent_change column in enrollment_change_demographics tibble
+percent_change_demographics_2010 <- enrollment_change_demographics |>
+  select(race, percent_change) |>
+  deframe()
+
+largest_enrollment_increase <- enrollment_change_demographics |>
+  select(race, percent_change) |>
+  slice_max(percent_change, n = 1)
+
+largest_enrollment_decrease <- enrollment_change_demographics |>
+  select(race, percent_change) |>
+  slice_min(percent_change, n = 1)
+
+```
+
+```{r uc-berkley-comparison}
+
+# UC Berkley first year undergraduate demographics yoy (2023-2024)
+
+ucb_first_year_demo_yoy <- IPEDS |>
+  filter(
+    institution_id == 110635,
+    year %in% c(2023, 2024),
+    level == "first year undergrad"
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE),
+    .by = year
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "race",
+    values_to = "enrollment"
+  ) |>
+  pivot_wider(
+    names_from = year,
+    values_from = enrollment,
+    names_prefix = "enrollment_"
+  ) |>
+  mutate(
+    change_yoy = enrollment_2024 - enrollment_2023,
+    percent_change_yoy = change_yoy / enrollment_2023
+  ) |>
+  select(race, enrollment_2023, enrollment_2024, percent_change_yoy) |>
+  mutate(
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+      )
+  )
+
+# values for percent change yoy in UCB first year undergrads (2023-2024)
+percent_change_ucb_first_year <- ucb_first_year_demo_yoy |>
+  select(race, percent_change_yoy) |>
+  deframe()
+
+# berkley-long-term
+
+ucb_demo_long_term <- IPEDS |>
+  filter(
+    institution_id == 110635,
+    year %in% c(2010, 2024),
+    level == "first year undergrad"
+  ) |>
+  summarise(
+    aian   = sum(enrollment_m_aian + enrollment_f_aian, na.rm = TRUE),
+    asia   = sum(enrollment_m_asia + enrollment_f_asia, na.rm = TRUE),
+    bkaa   = sum(enrollment_m_bkaa + enrollment_f_bkaa, na.rm = TRUE),
+    hisp   = sum(enrollment_m_hisp + enrollment_f_hisp, na.rm = TRUE),
+    nhpi   = sum(enrollment_m_nhpi + enrollment_f_nhpi, na.rm = TRUE),
+    whit   = sum(enrollment_m_whit + enrollment_f_whit, na.rm = TRUE),
+    `2mor` = sum(enrollment_m_2mor + enrollment_f_2mor, na.rm = TRUE),
+    unkn   = sum(enrollment_m_unkn + enrollment_f_unkn, na.rm = TRUE),
+    nral   = sum(enrollment_m_nral + enrollment_f_nral, na.rm = TRUE),
+    .by = year
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "race",
+    values_to = "enrollment"
+  ) |>
+  pivot_wider(
+    names_from = year,
+    values_from = enrollment,
+    names_prefix = "enrollment_"
+  ) |>
+  mutate(
+    change = enrollment_2024 - enrollment_2010,
+    percent_change = change / enrollment_2010,
+    race = case_match(race,
+      "aian" ~ "American Indian/Alaska Native",
+      "asia" ~ "Asian",
+      "bkaa" ~ "Black/African American",
+      "hisp" ~ "Hispanic",
+      "nhpi" ~ "Native Hawaiian/Pacific Islander",
+      "whit" ~ "White",
+      "2mor" ~ "Two or More Races",
+      "unkn" ~ "Unknown",
+      "nral" ~ "Non-Resident"
+      )
+  ) |>
+  arrange(desc(percent_change)) |>
+  select(race, enrollment_2010, enrollment_2024, change, percent_change)
+
+
+```
+
+
+### Diversity Still Alive and Well in College Park?
+
+*by President Darryll J. Pines, University of Maryland, College Park*
+
+The diversity boom of the Obama years has faded and some say its momentum was dampened further with the relatively recent Supreme Court decision in the case of [Students for Fair Admissions v. Harvard](https://en.wikipedia.org/wiki/Students_for_Fair_Admissions_v._Harvard) that removes race as a factor in the college admission process. When faced with this new world of admissions, it led us to wonder, did race-conscious practices prop up our diverse admissions make up or does it make little difference? As a campus dedicated to bringing together myriad voices and visions that usher in a brighter future, we took on the job of checking if we've delivered on our promise to our students starting with the two main hallmarks of diversity on campus: gender and race. 
+
+#### Looking Back on 2024 
+
+Focusing on the present, in the 2024 academic year we had a total of `r comma(sum(umd_enrollment_2024$total_enrollment))` students enrolled at both the undergraduate and graduate levels. Broken down further by gender, we found an identical gender split across levels with both undergraduate and graduate populations being `r percent(umd_undergrad_2024$percent_female)` women and `r percent(umd_undergrad_2024$percent_male)` men. At the outset, it appears our balance between genders successfully mimics the outside world's demographics. A peek through the lens of race and ethnicity, though, gives us a much more nuanced story. 
+
+Our undergraduate student body comprised mostly of students who were White (`r percent(race_percents_2024["whit"], accuracy = 0.1)`), Asian (`r percent(race_percents_2024["asia"], accuracy = 0.1)`), Black (`r percent(race_percents_2024["bkaa"], accuracy = 0.1)`) and Hispanic (`r percent(race_percents_2024["hisp"], accuracy = 0.1)`). When compared to the previous year (2023), we see that enrollment in every demographic group increased except for White students, who declined by `r percent(percent_change_undergrad["White"], accuracy = 0.1)`. If we zoom in further and look at the first year undergraduate class, we see quite a different story. 
+
+```{r undergrad-grad-demo-pie, echo = FALSE}
+
+all_students_demo_pie
+```
+
+After excluding two outlier groups with extremely small student numbers (American Indian/AK Native and Native Hawaiian/Pacific Islander), enrollment has declined in most groups. The only groups that saw a modest increase in students were Hispanics (`r percent(percent_change_first_year["Hispanic"], accuracy = 0.1)`), two or more races, and unknown race. The largest decline was in Asian students (`r percent(percent_change_first_year["Asian"], accuracy = 0.1)`), followed by Non-Resident and Black students (`r percent(percent_change_first_year["Non-Resident"], accuracy = 0.1)` and `r percent(percent_change_first_year["Black/African American"], accuracy = 0.1)`, respectively). In a post-SFFA world, these statistics on their face can possibly indicate that our race-conscious efforts were somewhat key drivers to our diversity but this alone is not enough for UMD to decry the death of diversity just yet.  
+
+```{r first-year-undergrad-table, echo = FALSE}
+
+first_undergrad_demo_yoy_table
+
+```
+
+#### Trends Out West
+
+The California public university system has eschewed affirmative action since 1996 when [California Proposition 209](https://en.wikipedia.org/wiki/1996_California_Proposition_209) was passed. In theory, the 2023 Supreme Court decision should have no major bearing on their enrollment numbers making the California public university system a suitable bellwether to compare our enrollment against. If we take a moment to compare UMD's changes in enrollment to those at UC Berkeley, the overall picture paints a somewhat grim trend.
+
+A few of our groups beat out Berkeley's numbers, including Hispanics (UMD: `r percent(percent_change_first_year["Hispanic"], accuracy = 0.1)` , UCB: `r percent(percent_change_ucb_first_year["Hispanic"], accuracy = 0.1)` ), Non-Residents (UMD: `r percent(percent_change_first_year["Non-Resident"], accuracy = 0.1)`, UCB: `r percent(percent_change_ucb_first_year["Non-Resident"], accuracy = 0.1)`) and Unknowns (UMD: `r percent(percent_change_first_year["Unknown"], accuracy = 0.1)`, UCB: `r percent(percent_change_ucb_first_year["Unknown"], accuracy = 0.1)`). In all other groups, UMD enrollment was worse, particularly with Asian students (UMD: `r percent(percent_change_first_year["Asian"], accuracy = 0.1)`, UCB: `r percent(percent_change_ucb_first_year["Asian"], accuracy = 0.1)`). Changes in White student enrollment across both colleges were similar and small with UCB at `r percent(percent_change_ucb_first_year["White"], accuracy = 0.1)` to UMD's `r percent(percent_change_first_year["White"], accuracy = 0.1)` indicating no major advantage for that student group.
+
+#### Comfort in Retrospect
+
+While it may seem that this is a harbinger of worse news down the road, it's important to look back to see if we're on track with our own historical trends. We've tracked a diversity score that indicates the proportion of non-white/non-asian students in our undergraduate classes. Looking at this score, we can breathe a little easier as it has steadily increased for the last 15 years from `r percent(diversity_by_year["2010"], accuracy = 0.1)` in 2010 to `r percent(diversity_by_year["2024"], accuracy = 0.1)` in 2024 and even increased between 2023 and 2024  by `r percent(diversity_change_by_year["2024"], accuracy = 0.1)`. 
+
+Along with this, historical data from 2010 to 2024 shows that a large majority of groups have seen upward trends in enrollment except for White students (down `r percent(largest_enrollment_decrease$percent_change, accuracy = 0.1)`) and the traditional outliers. White enrollment follows a greater downward trend long-term with numbers decreasing even after SFFA.
+
+Taking race out of the equation in admissions may negatively impact our Asian demographic long term but we have evidence that diversity is still alive and thriving in College Park with a shift in the makeup of other minority groups. It appears that SFFA will not be the thread that easily unravels what has long been interwoven into our campus culture.
 
 
 ::: {.callout-note title="AI Usage Statement" collapse="true"}
 
-Claude was used to look up how to use functions that are new to me (such as sumRows), pull up documentation on gt, r, and tidyverse packages, and to check over code blocks for efficiency. 
+Claude was used to review functions (especially those new to me such as sumRows), scan documentation on gt, r, and tidyverse packages, troubleshoot data visualization errors, and check over code blocks for efficiency. 
+
+All non-code text was generated without the use of any Generative AI tools.
 
 :::
 
