@@ -1,0 +1,150 @@
+---
+title: "Mini-Project 02: How Do You Do 'You Do You'?"
+author: "Evelyn Rodriguez"
+editor:
+    mode: source
+format:
+    html:
+        toc: true
+        code-fold: true
+        code-summary: "Display Code"
+        code-overflow: wrap
+        code-block-bg: true
+        code-block-border-left: "#6610f2"
+        highlight-style: "a11y"
+---
+
+## Introduction
+
+A suitable introduction goes here. In this mini-project, I intend to demonstrate
+my skills at Combining Data/Data Visualization in an analysis of Survey Date/Social Sciences data.
+
+## Data Acquisition and Preparation
+
+### Data Acquisition from ATUS
+
+```{r data-acquisitions}
+#| warning: false
+# Your code goes in chunks like this
+
+library(tidyverse)
+library(glue)
+library(readxl)
+library(httr2)
+library(skimr)
+
+load_atus_data <- function(file_base = c("resp", "rost", "act")){
+    if(!dir.exists(file.path("data", "mp02"))){
+        dir.create(file.path("data", "mp02"), showWarnings=FALSE, recursive=TRUE)
+    }
+    
+    file_base <- match.arg(file_base)
+    
+    file_name_out <- file.path("data", 
+                               "mp02", 
+                               glue("atus{file_base}_0324.dat"))
+        
+    if(!file.exists(file_name_out)){
+        
+        url_end <- glue("atus{file_base}-0324.zip")
+        
+        temp_zip <- tempfile(fileext=".zip")
+        temp_dir <- tools::file_path_sans_ext(temp_zip)
+        
+        request("https://www.bls.gov") |>
+            req_url_path("tus", "datafiles", url_end) |>
+            req_headers(`User-Agent` = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:149.0) Gecko/20100101 Firefox/149.0") |>
+            req_perform(temp_zip)
+    
+        unzip(temp_zip, exdir = temp_dir)
+        
+        temp_file <- file.path(temp_dir, basename(file_name_out))
+        
+        file.copy(temp_file, file_name_out)
+    }
+    
+    file <- read_csv(file_name_out, 
+                     show_col_types = FALSE)
+    
+    switch(file_base, 
+           resp=file |> 
+                  rename(survey_weight = TUFNWGTP, 
+                         time_alone = TRTALONE, 
+                         survey_year = TUYEAR),
+           rost=file |>
+                  mutate(sex = case_match(TESEX, 1 ~ "M", 2 ~ "F")), 
+           act =file |>
+                mutate(activity_n_of_day = TUACTIVITY_N, 
+                       time_spent_min = TUACTDUR24, 
+                       start_time = TUSTARTTIM,
+                       stop_time = TUSTOPTIME, 
+                       level1_code = paste0(TRTIER1P, "0000"), 
+                       level2_code = paste0(TRTIER2P, "00"),
+                       level3_code = TRCODEP) 
+           ) |> 
+                rename(participant_id = TUCASEID) |>
+                select(matches("[:lower:]", 
+                               ignore.case=FALSE))
+}
+
+load_atus_activities <- function(){
+    if(!dir.exists(file.path("data", "mp02"))){
+        dir.create(file.path("data", "mp02"), showWarnings=FALSE, recursive=TRUE)
+    }
+    
+    dest_file <- file.path("data",
+                           "mp02",
+                           "atus_activity_codes.csv")
+    
+    if(!file.exists(dest_file)){
+        download.file("https://michael-weylandt.com/STA9750/mini/atus_activity_codes.csv", 
+                      quiet=TRUE, 
+                      destfile=dest_file, 
+                      mode="wb")
+    }
+    
+    read_csv(dest_file, show_col_types = FALSE) 
+}
+
+respondents  <- load_atus_data("resp")
+roster       <- load_atus_data("rost")
+activities   <- load_atus_data("act")
+activity_codes <- load_atus_activities()
+
+glimpse(respondents)
+
+glimpse(activities)
+
+glimpse(activity_codes)
+
+glimpse(roster)
+
+```
+
+and you can then print variables from chunks: 
+
+```{r}
+
+```
+
+or inline, like this: $x$ is .
+
+## Exploratory Analysis
+
+Code related to Exploratory Data Analysis goes here. This may include
+exploratory graphics, instructor-provided exploratory questions, or other
+similar elements. 
+
+## Final Insights and Deliverable
+
+Code related to the final deliverable of the assignment goes here. 
+
+
+
+------------------------------------------------------------------------
+
+This work ©2025 by er0driguez was initially prepared as a Mini-Project for
+STA 9750 at Baruch College. More details about this course can be found at
+[the course site](https://michael-weylandt.com/STA9750) and instructions for
+this assignment can be found at 
+[MP #02](https://michael-weylandt.com/STA9750/mini/mini02.html)
