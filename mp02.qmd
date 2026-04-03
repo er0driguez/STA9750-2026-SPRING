@@ -32,6 +32,7 @@ library(glue)
 library(readxl)
 library(httr2)
 library(skimr)
+library(dplyr)
 
 load_atus_data <- function(file_base = c("resp", "rost", "act")){
     if(!dir.exists(file.path("data", "mp02"))){
@@ -70,9 +71,47 @@ load_atus_data <- function(file_base = c("resp", "rost", "act")){
            resp=file |> 
                   rename(survey_weight = TUFNWGTP, 
                          time_alone = TRTALONE, 
-                         survey_year = TUYEAR),
+                         survey_year = TUYEAR) |>
+                  #adding a column that counts number of children from roster file
+                  left_join(
+                    load_atus_data("rost") |>
+                      filter(age < 18) |>
+                      count(participant_id, name = "n_children_under18"),
+                    join_by(TUCASEID == participant_id)
+                  ) |>
+                  #coalesce will turn NA values into 0
+                  mutate(n_children_under18 = coalesce(n_children_under18, 0L),
+                         labor_force_status = case_match(TELFS,
+                            1 ~ "Employed - at work",
+                            2 ~ "Employed - absent",
+                            3 ~ "Unemployed - on layoff",
+                            4 ~ "Unemployed - looking",
+                            5 ~ "Not in labor force"),
+                         school_enrollment = case_match(TESCHENR,
+                           1 ~ "Enrolled",
+                           2 ~ "Not Enrolled",
+                           -1 ~ "Blank"),
+                         #checks if enrolled and teschlvl matches college
+                         college_enrolled = TESCHENR == 1 & TESCHLVL == 2)
+           ,
            rost=file |>
-                  mutate(sex = case_match(TESEX, 1 ~ "M", 2 ~ "F")), 
+                  mutate(sex = case_match(TESEX, 1 ~ "M", 2 ~ "F"),
+                         #adding relation to respondent
+                         relation = case_match(TERRP,
+                           c(18,19) ~ "Self",
+                           20 ~ "Spouse",
+                           21 ~ "Unmarried partner",
+                           22 ~ "Own household child",
+                           23 ~ "Grandchild",
+                           24 ~ "Parent",
+                           25 ~ "Brother/sister",
+                           26 ~ "Other related person",
+                           27 ~ "Foster child",
+                           28 ~ "Housemate/roommate",
+                           29 ~ "Roomer/boarder",
+                           30 ~ "Other nonrelative",
+                           40 ~ "Own nonhousehold child < 18")) |>
+                  rename(age = TEAGE), 
            act =file |>
                 mutate(activity_n_of_day = TUACTIVITY_N, 
                        time_spent_min = TUACTDUR24, 
@@ -80,7 +119,37 @@ load_atus_data <- function(file_base = c("resp", "rost", "act")){
                        stop_time = TUSTOPTIME, 
                        level1_code = paste0(TRTIER1P, "0000"), 
                        level2_code = paste0(TRTIER2P, "00"),
-                       level3_code = TRCODEP) 
+                       level3_code = TRCODEP,
+                       #location of activity
+                       location = case_match(TEWHERE,
+                         1 ~ "Home",
+                         2 ~ "Workplace",
+                         3 ~ "Someone else's home",
+                         4 ~ "Restaurant bar",
+                         5 ~ "Place of worship",
+                         6 ~ "Grocery store",
+                         7 ~ "Other store/mall",
+                         8 ~ "School",
+                         9 ~ "Outdoors",
+                         10 ~ "Library",
+                         11 ~ "Other place",
+                         12 ~ "Car, truck, or motorcycle (driver)",
+                         13 ~ "Car, truck, or motorcycle (passenger)",
+                         14 ~ "Walking",
+                         15 ~ "Bus",
+                         16 ~ "Subway/train",
+                         17 ~ "Bicycle",
+                         18 ~ "Boat/ferry",
+                         19 ~ "Taxi/limousine service",
+                         20 ~ "Airplane",
+                         21 ~ "Other transportation",
+                         30 ~ "Bank",
+                         31 ~ "Gym/health club",
+                         32 ~ "Post office",
+                         89 ~ "Unspecificed place",
+                         99 ~ "Unspecified transportation",
+                         (-1) ~ "Blank"
+                       )) 
            ) |> 
                 rename(participant_id = TUCASEID) |>
                 select(matches("[:lower:]", 
@@ -118,6 +187,7 @@ glimpse(activities)
 glimpse(activity_codes)
 
 glimpse(roster)
+
 
 ```
 
