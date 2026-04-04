@@ -33,8 +33,10 @@ library(readxl)
 library(httr2)
 library(skimr)
 library(dplyr)
+library(scales)
+library(gt)
 
-load_atus_data <- function(file_base = c("resp", "rost", "act")){
+load_atus_data <- function(file_base = c("resp", "rost", "act", "cps")){
     if(!dir.exists(file.path("data", "mp02"))){
         dir.create(file.path("data", "mp02"), showWarnings=FALSE, recursive=TRUE)
     }
@@ -68,15 +70,35 @@ load_atus_data <- function(file_base = c("resp", "rost", "act")){
                      show_col_types = FALSE)
     
     switch(file_base, 
+           #add cps data to determine if respondent is married
+           cps=file |>
+             filter(TULINENO == 1) |>
+             mutate(marital_status = case_match(PEMARITL,
+               1 ~ "Married - spouse present",
+               2 ~ "Married - spouse absent",
+               3 ~ "Widowed",
+               4 ~ "Divorced",
+               5 ~ "Separated",
+               6 ~ "Never married"),
+             #check if respondents are married
+               has_spouse = marital_status %in% c("Married - spouse present", "Married - spouse absent"),
+               is_retired = PEMLR == 5)
+             ,
            resp=file |> 
                   rename(survey_weight = TUFNWGTP, 
                          time_alone = TRTALONE, 
-                         survey_year = TUYEAR) |>
-                  #adding a column that counts number of children from roster file
+                         survey_year = TUYEAR,
+                         weekly_earnings = TRERNWA) |>
+                  #add a column that counts number of children from roster file
                   left_join(
                     load_atus_data("rost") |>
                       filter(age < 18) |>
                       count(participant_id, name = "n_children_under18"),
+                    join_by(TUCASEID == participant_id)
+                  ) |>
+                  # pull in CPS data to add marital_status and has_spouse columns
+                  left_join(
+                    load_atus_data("cps"),
                     join_by(TUCASEID == participant_id)
                   ) |>
                   #coalesce will turn NA values into 0
@@ -87,11 +109,12 @@ load_atus_data <- function(file_base = c("resp", "rost", "act")){
                             3 ~ "Unemployed - on layoff",
                             4 ~ "Unemployed - looking",
                             5 ~ "Not in labor force"),
+                         #creates column indicating enrollment
                          school_enrollment = case_match(TESCHENR,
                            1 ~ "Enrolled",
                            2 ~ "Not Enrolled",
                            -1 ~ "Blank"),
-                         #checks if enrolled and teschlvl matches college
+                         #create demographic variable that checks if enrolled and teschlvl matches college/university
                          college_enrolled = TESCHENR == 1 & TESCHLVL == 2)
            ,
            rost=file |>
@@ -176,11 +199,14 @@ load_atus_activities <- function(){
 }
 
 respondents  <- load_atus_data("resp")
+cps <- load_atus_data("cps") 
 roster       <- load_atus_data("rost")
 activities   <- load_atus_data("act")
 activity_codes <- load_atus_activities()
 
 glimpse(respondents)
+
+glimpse(cps)
 
 glimpse(activities)
 
@@ -205,7 +231,331 @@ Code related to Exploratory Data Analysis goes here. This may include
 exploratory graphics, instructor-provided exploratory questions, or other
 similar elements. 
 
-## Final Insights and Deliverable
+### Inline Values
+
+**1. How many different respondents have answered an ATUS survey since 2003?**
+
+```{r unique-respondents}
+
+unique_respondents <- respondents |> 
+  distinct(participant_id) |>
+  nrow()
+
+```
+
+There are `r comma(unique_respondents)` respondents that answered the ATUS survey since 2003.
+
+
+**2. Americans enjoy watching a variety of sports. How many different sports does ATUS ask about watching as a “Level 3” task?**
+
+```{r number-of-sports-watched}
+
+n_sports_watched <- activity_codes |>
+  filter(code_level2 == 130200) |>
+  summarise(n = n()) |>
+  pull(n)
+
+```
+
+ATUS asks about watching `r n_sports_watched` different sports as a Level 3 task. 
+
+**3. Approximately what percent of Americans are retired?**
+
+```{r percent-retired}
+
+percent_retired <- respondents |>
+  summarise(pct_retired = weighted.mean(is_retired, survey_weight)) |>
+  pull(pct_retired)
+
+```
+
+Approximately `r percent(percent_retired)` of Americans are retired.
+
+
+**4. On average, how many hours do Americans sleep per night?**
+
+```{r average-sleep-hours}
+
+avg_sleep_hours <- activities |>
+  #filtering only on level 3 code 10101 since we don't know if Other Sleep includes actually sleeping
+  filter(level3_code == "010101") |>
+  group_by(participant_id) |>
+  summarise(total_sleep_min = sum(time_spent_min)) |>
+  left_join(
+    respondents |> select(participant_id, survey_weight),
+    join_by(participant_id)
+  ) |>
+  summarise(avg_sleep_hours = weighted.mean(total_sleep_min, survey_weight) / 60) |>
+  pull(avg_sleep_hours)
+
+```
+
+On average, Americans sleep `r round(avg_sleep_hours, 1)` hours per night.
+
+**5. On average, how many hours do Americans with one or more children in the home spend taking care of their children (all activities including healthcare and involvement in their children’s education)?**
+
+```{r average-childcare-hours}
+
+avg_childcare_hours <- activities |>
+  filter(
+    level1_code == "030000",
+    level2_code %in% c("030100", "030200", "030300")) |>
+  group_by(participant_id) |>
+  summarise(total_childcare_min = sum(time_spent_min)) |>
+  #right join ensures we keep all respondents with children even if they recorded zero childcare activities
+  #this will prevent an upward bias in the average
+  right_join(
+    respondents |>
+      filter(n_children_under18 >= 1) |>
+      select(participant_id, survey_weight),
+    join_by(participant_id)
+  ) |>
+  mutate(total_childcare_min = coalesce(total_childcare_min, 0L)) |>
+  summarise(avg_childcare_hours = weighted.mean(total_childcare_min, survey_weight) / 60) |>
+  pull(avg_childcare_hours)
+
+```
+
+On average, American with one or more children spend `r round(avg_childcare_hours, 2)` hours taking care of their children. 
+
+
+### Tables
+
+**1. Do retired persons spend more time on lawn-care than people who have full-time employment?**
+
+```{r lawn-care-time}
+
+lawn_care <- activities |>
+  filter(
+    level2_code == "020500",
+    #filter only one level 3 activity code that specifically talks about lawns since we don't know what is included in Other category
+    level3_code == "020501"
+  ) |>
+  group_by(participant_id) |>
+  summarise(total_lawn_min = sum(time_spent_min)) |>
+  right_join(
+    respondents |>
+      filter(is_retired | labor_force_status == "Employed - at work") |>
+      select(participant_id, survey_weight, is_retired, labor_force_status), 
+    join_by(participant_id)
+  ) |>
+  mutate(total_lawn_min = coalesce(total_lawn_min, 0L)) |>
+  group_by(is_retired) |>
+  summarise(avg_lawn_hours = weighted.mean(total_lawn_min, survey_weight) / 60)
+
+#table
+lawn_care_table <- lawn_care |>
+  mutate(is_retired = if_else(is_retired, "Retired", "Employed Full-Time")) |>
+  gt() |>
+  cols_label(
+    is_retired = md("**Employment Status**"),
+    avg_lawn_hours = md("**Average Hours Spent<br>on Lawn Care**")
+  ) |>
+  cols_align(align = "center", columns = avg_lawn_hours) |>
+  fmt_number(avg_lawn_hours, decimals = 2) |>
+  tab_header(
+    title = md("**Lawn Care Hours by Employment Status**"), 
+    subtitle = "Average Time Spent on Lawn-Care for Retired vs. Full-Time Employed Persons"
+  ) |>
+  tab_source_note(
+    source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+  )
+
+lawn_care_table
+
+```
+
+On average, retired people spend more time on lawn-care than full-time employed people.
+
+
+**2. How does the amount of time spent on social and recreational activities typically compare for married and unmarried people?**
+
+```{r social-and-recreational-activities-married-vs-unmarried}
+
+social_rec <- activities |>
+  filter(level1_code %in% c("120000", "130000")) |>
+  group_by(participant_id) |>
+  summarise(total_social_rec_min = sum(time_spent_min)) |>
+  right_join(
+    respondents |>
+      select(participant_id, survey_weight, has_spouse),
+    join_by(participant_id)
+  ) |>
+  mutate(total_social_rec_min = coalesce(total_social_rec_min, 0L)) |>
+  group_by(has_spouse) |>
+  summarise(avg_social_rec_hours = weighted.mean(total_social_rec_min, survey_weight) / 60)
+
+social_rec_table <- social_rec |>
+  mutate(has_spouse = if_else(has_spouse, "Married", "Unmarried")) |>
+  gt() |>
+  cols_label(
+    has_spouse = md("**Marital Status**"),
+    avg_social_rec_hours = md("**Avg. Hours Spent on<br>Social/Recreational Activities**")
+  ) |>
+  cols_align(align = "center", columns = avg_social_rec_hours) |>
+  fmt_number(avg_social_rec_hours, decimals = 2) |>
+  tab_header(
+    title = md("**Social and Recreational Activity Time by Marital Status**"), 
+    subtitle = md("Average Time Spent on Social and Recreational Activities for Married vs. Non-Married People")
+  ) |>
+  tab_source_note(
+    source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+  )
+
+social_rec_table
+  
+
+```
+
+
+**3. Where do high-earning Americans spend the majority of their time?**
+
+```{r high-earner-time}
+
+high_earner_threshold <- respondents |>
+  filter(weekly_earnings > 0) |>
+  #define high earner threshold as someone earning above the 75th percentile
+  summarise(threshold = quantile(weekly_earnings, 0.75)) |>
+  pull(threshold)
+
+high_earner_location <- activities |>
+  right_join(
+    respondents |>
+      filter(weekly_earnings >= high_earner_threshold) |>
+      select(participant_id, survey_weight),
+    join_by(participant_id)
+  ) |>
+  #remove rows where location is missing or blank
+  filter(!is.na(location), location != "Blank") |>
+  group_by(location) |>
+  summarise(avg_hours = weighted.mean(time_spent_min, survey_weight) / 60) |>
+  arrange(desc(avg_hours))
+
+high_earner_location_table <- high_earner_location |>
+  slice_head(n = 10) |>
+  gt() |>
+  cols_label(
+    location = md("**Location**"),
+    avg_hours = md("**Average Hours per Day**")
+  ) |>
+  cols_align(align = "center", columns = avg_hours) |>
+  fmt_number(avg_hours, decimals = 2) |>
+  tab_header(
+    title = md("**Where Do High-Earning Americans Spend Their Time**"), 
+    subtitle = "Locations where respondents above the 75th percentile of weekly earnings spend the majority of their time"
+  ) |>
+  tab_source_note(
+    source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+  )
+
+high_earner_location_table  
+  
+
+```
+
+
+*High earners are defined as those earning above the 75th percentile for weekly earnings*
+
+
+**4. What are the most common activities reported by Americans when on a bus, train, subway, boat, or ferry?**
+
+```{r common-transit-activities}
+
+transit_activities <- activities |>
+  filter(location %in% c("Bus", "Subway/train", "Boat/ferry")) |>
+  left_join(
+    activity_codes |> select(code_level3, task_level3) |> distinct(), 
+    join_by(level3_code == code_level3)
+  ) |>
+  filter(!is.na(task_level3)) |>
+  group_by(task_level3) |>
+  summarise(n_occurrences = n()) |>
+  arrange(desc(n_occurrences)) |>
+  slice_head(n = 10)
+
+transit_activities_table <- transit_activities |>
+  gt() |>
+  cols_label(
+    task_level3 = md("**Activity**"),
+    n_occurrences = md("**Number of Occurrences**")
+  ) |>
+  cols_align(align = "center", columns = n_occurrences) |>
+  tab_header(
+    title = md("**Most Common Activities on Public Transportation"),
+    subtitle = "Activities on Bus, Subway, Train, Boat or Ferry"
+  ) |>
+  tab_source_note(
+    source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+  )
+
+transit_activities_table
+
+```
+
+*Most common, in this case, means most frequently reported activity as opposed to activity with most time reported spent on activity*
+
+
+**5. How much time per day do Americans spend on your four favorite activities and how does this vary by age group?**
+
+Evelyn's Favorite Activities: Reading (for personal interest), playing games, weightlifting or strength training
+
+```{r reading-for-personal-time-per-day}
+
+reading_by_age <- activities |>
+  filter(level3_code == "120312") |>
+  right_join(
+    respondents |> select(participant_id, survey_weight),
+    join_by(participant_id)
+  ) |>
+  mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+  left_join(
+    roster |>
+      filter(relation == "Self") |>
+      select(participant_id, age), 
+    join_by(participant_id)
+  ) |> 
+  mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
+                         labels = c("Under 25", "25-34", "35-44", "45-54", "55-64", "65 and over"))) |>
+  group_by(age_group) |>
+  summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
+  arrange(age_group)
+
+reading_by_age_table <- reading_by_age |>
+  gt() |>
+  cols_label(
+    age_group = md("**Age Group**"),
+    avg_min = md("**Average Minutes per Day**")
+  ) |>
+  cols_align(align = "center", columns = avg_min) |>
+  fmt_number(avg_min, decimals = 1) |>
+  tab_header(
+    title = md("**Time Spent Reading by Age Group**"), 
+    subtitle = "Average Minutes Per Day Reading for Personal Interest"
+  ) |>
+  tab_source_note(
+    source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+  )
+
+reading_by_age_table
+
+```
+
+
+### Plots
+
+**1. How does the amount of time spent on household activities change as Americans age?**
+
+**2. A major perk of working in education is the freedom to spend summers how you wish. What are the most popular activities for Americans employed in education during the summer months (June, July, and August)?**
+
+**3. It is often remarked that “education is a privilege wasted on the young”. Among respondents who report being enrolled in a higher-education program, how does the amount of time allocated to various educational activities (attending class, doing homework, studying, etc.) vary by age? Does it seem to be true that older students dedicate more time to their education?**
+
+**4. A “bump plot” is an effective way to display ranking (ordinal) data and to show how it changes over time. Use a bump plot to show how the relative interest in different sports changes as a function of either age or income (your choice).**
+
+**5. How does the amount of time parents spend per child change as family size increases?**
+
+
+
+## Market Research on Time Use Patterns in Target Demographics
 
 Code related to the final deliverable of the assignment goes here. 
 
