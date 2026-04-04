@@ -273,142 +273,147 @@ window.Quarto = {
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>               <span class="dv">6</span> <span class="sc">~</span> <span class="st">"Never married"</span>),</span>
 <span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>             <span class="co">#check if respondents are married</span></span>
 <span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>               <span class="at">has_spouse =</span> marital_status <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Married - spouse present"</span>, <span class="st">"Married - spouse absent"</span>),</span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>               <span class="at">is_retired =</span> PEMLR <span class="sc">==</span> <span class="dv">5</span>)</span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>             ,</span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>           <span class="at">resp=</span>file <span class="sc">|&gt;</span> </span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rename</span>(<span class="at">survey_weight =</span> TUFNWGTP, </span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>                         <span class="at">time_alone =</span> TRTALONE, </span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>                         <span class="at">survey_year =</span> TUYEAR,</span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>                         <span class="at">weekly_earnings =</span> TRERNWA) <span class="sc">|&gt;</span></span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#add a column that counts number of children from roster file</span></span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
-<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">filter</span>(age <span class="sc">&lt;</span> <span class="dv">18</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">count</span>(participant_id, <span class="at">name =</span> <span class="st">"n_children_under18"</span>),</span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
-<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>                  <span class="co"># pull in CPS data to add marital_status and has_spouse columns</span></span>
-<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
-<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>),</span>
-<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
-<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
-<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#coalesce will turn NA values into 0</span></span>
-<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">n_children_under18 =</span> <span class="fu">coalesce</span>(n_children_under18, <span class="dv">0</span>L),</span>
-<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>                         <span class="at">labor_force_status =</span> <span class="fu">case_match</span>(TELFS,</span>
-<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Employed - at work"</span>,</span>
-<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Employed - absent"</span>,</span>
-<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Unemployed - on layoff"</span>,</span>
-<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Unemployed - looking"</span>,</span>
-<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Not in labor force"</span>),</span>
-<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#creates column indicating enrollment</span></span>
-<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>                         <span class="at">school_enrollment =</span> <span class="fu">case_match</span>(TESCHENR,</span>
-<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Enrolled"</span>,</span>
-<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Not Enrolled"</span>,</span>
-<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>                           <span class="sc">-</span><span class="dv">1</span> <span class="sc">~</span> <span class="st">"Blank"</span>),</span>
-<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#create demographic variable that checks if enrolled and teschlvl matches college/university</span></span>
-<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>                         <span class="at">college_enrolled =</span> TESCHENR <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> TESCHLVL <span class="sc">==</span> <span class="dv">2</span>)</span>
-<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>           ,</span>
-<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>           <span class="at">rost=</span>file <span class="sc">|&gt;</span></span>
-<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">sex =</span> <span class="fu">case_match</span>(TESEX, <span class="dv">1</span> <span class="sc">~</span> <span class="st">"M"</span>, <span class="dv">2</span> <span class="sc">~</span> <span class="st">"F"</span>),</span>
-<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#adding relation to respondent</span></span>
-<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>                         <span class="at">relation =</span> <span class="fu">case_match</span>(TERRP,</span>
-<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">c</span>(<span class="dv">18</span>,<span class="dv">19</span>) <span class="sc">~</span> <span class="st">"Self"</span>,</span>
-<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Spouse"</span>,</span>
-<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Unmarried partner"</span>,</span>
-<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">22</span> <span class="sc">~</span> <span class="st">"Own household child"</span>,</span>
-<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">23</span> <span class="sc">~</span> <span class="st">"Grandchild"</span>,</span>
-<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">24</span> <span class="sc">~</span> <span class="st">"Parent"</span>,</span>
-<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">25</span> <span class="sc">~</span> <span class="st">"Brother/sister"</span>,</span>
-<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">26</span> <span class="sc">~</span> <span class="st">"Other related person"</span>,</span>
-<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">27</span> <span class="sc">~</span> <span class="st">"Foster child"</span>,</span>
-<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">28</span> <span class="sc">~</span> <span class="st">"Housemate/roommate"</span>,</span>
-<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">29</span> <span class="sc">~</span> <span class="st">"Roomer/boarder"</span>,</span>
-<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Other nonrelative"</span>,</span>
-<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">40</span> <span class="sc">~</span> <span class="st">"Own nonhousehold child &lt; 18"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rename</span>(<span class="at">age =</span> TEAGE), </span>
-<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a>           <span class="at">act =</span>file <span class="sc">|&gt;</span></span>
-<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a>                <span class="fu">mutate</span>(<span class="at">activity_n_of_day =</span> TUACTIVITY_N, </span>
-<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a>                       <span class="at">time_spent_min =</span> TUACTDUR24, </span>
-<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a>                       <span class="at">start_time =</span> TUSTARTTIM,</span>
-<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a>                       <span class="at">stop_time =</span> TUSTOPTIME, </span>
-<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level1_code =</span> <span class="fu">paste0</span>(TRTIER1P, <span class="st">"0000"</span>), </span>
-<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level2_code =</span> <span class="fu">paste0</span>(TRTIER2P, <span class="st">"00"</span>),</span>
-<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level3_code =</span> TRCODEP,</span>
-<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a>                       <span class="co">#location of activity</span></span>
-<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a>                       <span class="at">location =</span> <span class="fu">case_match</span>(TEWHERE,</span>
-<span id="cb1-121"><a href="#cb1-121" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Home"</span>,</span>
-<span id="cb1-122"><a href="#cb1-122" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Workplace"</span>,</span>
-<span id="cb1-123"><a href="#cb1-123" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Someone else's home"</span>,</span>
-<span id="cb1-124"><a href="#cb1-124" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Restaurant bar"</span>,</span>
-<span id="cb1-125"><a href="#cb1-125" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Place of worship"</span>,</span>
-<span id="cb1-126"><a href="#cb1-126" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">6</span> <span class="sc">~</span> <span class="st">"Grocery store"</span>,</span>
-<span id="cb1-127"><a href="#cb1-127" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">7</span> <span class="sc">~</span> <span class="st">"Other store/mall"</span>,</span>
-<span id="cb1-128"><a href="#cb1-128" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">8</span> <span class="sc">~</span> <span class="st">"School"</span>,</span>
-<span id="cb1-129"><a href="#cb1-129" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">9</span> <span class="sc">~</span> <span class="st">"Outdoors"</span>,</span>
-<span id="cb1-130"><a href="#cb1-130" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">10</span> <span class="sc">~</span> <span class="st">"Library"</span>,</span>
-<span id="cb1-131"><a href="#cb1-131" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">11</span> <span class="sc">~</span> <span class="st">"Other place"</span>,</span>
-<span id="cb1-132"><a href="#cb1-132" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">12</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (driver)"</span>,</span>
-<span id="cb1-133"><a href="#cb1-133" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">13</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (passenger)"</span>,</span>
-<span id="cb1-134"><a href="#cb1-134" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">14</span> <span class="sc">~</span> <span class="st">"Walking"</span>,</span>
-<span id="cb1-135"><a href="#cb1-135" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">15</span> <span class="sc">~</span> <span class="st">"Bus"</span>,</span>
-<span id="cb1-136"><a href="#cb1-136" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">16</span> <span class="sc">~</span> <span class="st">"Subway/train"</span>,</span>
-<span id="cb1-137"><a href="#cb1-137" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">17</span> <span class="sc">~</span> <span class="st">"Bicycle"</span>,</span>
-<span id="cb1-138"><a href="#cb1-138" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">18</span> <span class="sc">~</span> <span class="st">"Boat/ferry"</span>,</span>
-<span id="cb1-139"><a href="#cb1-139" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">19</span> <span class="sc">~</span> <span class="st">"Taxi/limousine service"</span>,</span>
-<span id="cb1-140"><a href="#cb1-140" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Airplane"</span>,</span>
-<span id="cb1-141"><a href="#cb1-141" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Other transportation"</span>,</span>
-<span id="cb1-142"><a href="#cb1-142" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Bank"</span>,</span>
-<span id="cb1-143"><a href="#cb1-143" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">31</span> <span class="sc">~</span> <span class="st">"Gym/health club"</span>,</span>
-<span id="cb1-144"><a href="#cb1-144" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">32</span> <span class="sc">~</span> <span class="st">"Post office"</span>,</span>
-<span id="cb1-145"><a href="#cb1-145" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">89</span> <span class="sc">~</span> <span class="st">"Unspecificed place"</span>,</span>
-<span id="cb1-146"><a href="#cb1-146" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">99</span> <span class="sc">~</span> <span class="st">"Unspecified transportation"</span>,</span>
-<span id="cb1-147"><a href="#cb1-147" aria-hidden="true" tabindex="-1"></a>                         (<span class="sc">-</span><span class="dv">1</span>) <span class="sc">~</span> <span class="st">"Blank"</span></span>
-<span id="cb1-148"><a href="#cb1-148" aria-hidden="true" tabindex="-1"></a>                       )) </span>
-<span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a>           ) <span class="sc">|&gt;</span> </span>
-<span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a>                <span class="fu">rename</span>(<span class="at">participant_id =</span> TUCASEID) <span class="sc">|&gt;</span></span>
-<span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a>                <span class="fu">select</span>(<span class="fu">matches</span>(<span class="st">"[:lower:]"</span>, </span>
-<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ignore.case=</span><span class="cn">FALSE</span>))</span>
-<span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a>load_atus_activities <span class="ot">&lt;-</span> <span class="cf">function</span>(){</span>
-<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">dir.exists</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>))){</span>
-<span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dir.create</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>), <span class="at">showWarnings=</span><span class="cn">FALSE</span>, <span class="at">recursive=</span><span class="cn">TRUE</span>)</span>
-<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a>    dest_file <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="st">"data"</span>,</span>
-<span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"mp02"</span>,</span>
-<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"atus_activity_codes.csv"</span>)</span>
-<span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">file.exists</span>(dest_file)){</span>
-<span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a>        <span class="fu">download.file</span>(<span class="st">"https://michael-weylandt.com/STA9750/mini/atus_activity_codes.csv"</span>, </span>
-<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a>                      <span class="at">quiet=</span><span class="cn">TRUE</span>, </span>
-<span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a>                      <span class="at">destfile=</span>dest_file, </span>
-<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a>                      <span class="at">mode=</span><span class="st">"wb"</span>)</span>
-<span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a>    <span class="fu">read_csv</span>(dest_file, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) </span>
-<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a>respondents  <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"resp"</span>)</span>
-<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a>cps <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>) </span>
-<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a>roster       <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>)</span>
-<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a>activities   <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"act"</span>)</span>
-<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a>activity_codes <span class="ot">&lt;-</span> <span class="fu">load_atus_activities</span>()</span>
-<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(respondents)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>               <span class="at">is_retired =</span> PEMLR <span class="sc">==</span> <span class="dv">5</span>,</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>             <span class="co">#check if respondent works in education by main job occupation code</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>               <span class="at">in_education =</span> PRDTOCC1 <span class="sc">==</span> <span class="dv">8</span>)</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>             ,</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>           <span class="at">resp=</span>file <span class="sc">|&gt;</span> </span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rename</span>(<span class="at">survey_weight =</span> TUFNWGTP, </span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>                         <span class="at">time_alone =</span> TRTALONE, </span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>                         <span class="at">survey_year =</span> TUYEAR,</span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>                         <span class="at">survey_month =</span> TUMONTH,</span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>                         <span class="at">weekly_earnings =</span> TRERNWA) <span class="sc">|&gt;</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#add a column that counts number of children from roster file</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">filter</span>(age <span class="sc">&lt;</span> <span class="dv">18</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">count</span>(participant_id, <span class="at">name =</span> <span class="st">"n_children_under18"</span>),</span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>                  <span class="co"># pull in CPS data to add marital_status and has_spouse columns</span></span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>),</span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#coalesce will turn NA values into 0</span></span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">n_children_under18 =</span> <span class="fu">coalesce</span>(n_children_under18, <span class="dv">0</span>L),</span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a>                         <span class="at">labor_force_status =</span> <span class="fu">case_match</span>(TELFS,</span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Employed - at work"</span>,</span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Employed - absent"</span>,</span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Unemployed - on layoff"</span>,</span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Unemployed - looking"</span>,</span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Not in labor force"</span>),</span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#creates column indicating enrollment</span></span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>                         <span class="at">school_enrollment =</span> <span class="fu">case_match</span>(TESCHENR,</span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Enrolled"</span>,</span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Not Enrolled"</span>,</span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>                           <span class="sc">-</span><span class="dv">1</span> <span class="sc">~</span> <span class="st">"Blank"</span>),</span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#create demographic variable that checks if enrolled and teschlvl matches college/university</span></span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>                         <span class="at">college_enrolled =</span> TESCHENR <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> TESCHLVL <span class="sc">==</span> <span class="dv">2</span>)</span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>           ,</span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>           <span class="at">rost=</span>file <span class="sc">|&gt;</span></span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">sex =</span> <span class="fu">case_match</span>(TESEX, <span class="dv">1</span> <span class="sc">~</span> <span class="st">"M"</span>, <span class="dv">2</span> <span class="sc">~</span> <span class="st">"F"</span>),</span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#adding relation to respondent</span></span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>                         <span class="at">relation =</span> <span class="fu">case_match</span>(TERRP,</span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">c</span>(<span class="dv">18</span>,<span class="dv">19</span>) <span class="sc">~</span> <span class="st">"Self"</span>,</span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Spouse"</span>,</span>
+<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Unmarried partner"</span>,</span>
+<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">22</span> <span class="sc">~</span> <span class="st">"Own household child"</span>,</span>
+<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">23</span> <span class="sc">~</span> <span class="st">"Grandchild"</span>,</span>
+<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">24</span> <span class="sc">~</span> <span class="st">"Parent"</span>,</span>
+<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">25</span> <span class="sc">~</span> <span class="st">"Brother/sister"</span>,</span>
+<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">26</span> <span class="sc">~</span> <span class="st">"Other related person"</span>,</span>
+<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">27</span> <span class="sc">~</span> <span class="st">"Foster child"</span>,</span>
+<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">28</span> <span class="sc">~</span> <span class="st">"Housemate/roommate"</span>,</span>
+<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">29</span> <span class="sc">~</span> <span class="st">"Roomer/boarder"</span>,</span>
+<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Other nonrelative"</span>,</span>
+<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">40</span> <span class="sc">~</span> <span class="st">"Own nonhousehold child &lt; 18"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rename</span>(<span class="at">age =</span> TEAGE), </span>
+<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a>           <span class="at">act =</span>file <span class="sc">|&gt;</span></span>
+<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a>                <span class="fu">mutate</span>(<span class="at">activity_n_of_day =</span> TUACTIVITY_N, </span>
+<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a>                       <span class="at">time_spent_min =</span> TUACTDUR24, </span>
+<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a>                       <span class="at">start_time =</span> TUSTARTTIM,</span>
+<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a>                       <span class="at">stop_time =</span> TUSTOPTIME, </span>
+<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level1_code =</span> <span class="fu">paste0</span>(TRTIER1P, <span class="st">"0000"</span>), </span>
+<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level2_code =</span> <span class="fu">paste0</span>(TRTIER2P, <span class="st">"00"</span>),</span>
+<span id="cb1-121"><a href="#cb1-121" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level3_code =</span> TRCODEP,</span>
+<span id="cb1-122"><a href="#cb1-122" aria-hidden="true" tabindex="-1"></a>                       <span class="co">#location of activity</span></span>
+<span id="cb1-123"><a href="#cb1-123" aria-hidden="true" tabindex="-1"></a>                       <span class="at">location =</span> <span class="fu">case_match</span>(TEWHERE,</span>
+<span id="cb1-124"><a href="#cb1-124" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Home"</span>,</span>
+<span id="cb1-125"><a href="#cb1-125" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Workplace"</span>,</span>
+<span id="cb1-126"><a href="#cb1-126" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Someone else's home"</span>,</span>
+<span id="cb1-127"><a href="#cb1-127" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Restaurant bar"</span>,</span>
+<span id="cb1-128"><a href="#cb1-128" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Place of worship"</span>,</span>
+<span id="cb1-129"><a href="#cb1-129" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">6</span> <span class="sc">~</span> <span class="st">"Grocery store"</span>,</span>
+<span id="cb1-130"><a href="#cb1-130" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">7</span> <span class="sc">~</span> <span class="st">"Other store/mall"</span>,</span>
+<span id="cb1-131"><a href="#cb1-131" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">8</span> <span class="sc">~</span> <span class="st">"School"</span>,</span>
+<span id="cb1-132"><a href="#cb1-132" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">9</span> <span class="sc">~</span> <span class="st">"Outdoors"</span>,</span>
+<span id="cb1-133"><a href="#cb1-133" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">10</span> <span class="sc">~</span> <span class="st">"Library"</span>,</span>
+<span id="cb1-134"><a href="#cb1-134" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">11</span> <span class="sc">~</span> <span class="st">"Other place"</span>,</span>
+<span id="cb1-135"><a href="#cb1-135" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">12</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (driver)"</span>,</span>
+<span id="cb1-136"><a href="#cb1-136" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">13</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (passenger)"</span>,</span>
+<span id="cb1-137"><a href="#cb1-137" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">14</span> <span class="sc">~</span> <span class="st">"Walking"</span>,</span>
+<span id="cb1-138"><a href="#cb1-138" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">15</span> <span class="sc">~</span> <span class="st">"Bus"</span>,</span>
+<span id="cb1-139"><a href="#cb1-139" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">16</span> <span class="sc">~</span> <span class="st">"Subway/train"</span>,</span>
+<span id="cb1-140"><a href="#cb1-140" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">17</span> <span class="sc">~</span> <span class="st">"Bicycle"</span>,</span>
+<span id="cb1-141"><a href="#cb1-141" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">18</span> <span class="sc">~</span> <span class="st">"Boat/ferry"</span>,</span>
+<span id="cb1-142"><a href="#cb1-142" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">19</span> <span class="sc">~</span> <span class="st">"Taxi/limousine service"</span>,</span>
+<span id="cb1-143"><a href="#cb1-143" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Airplane"</span>,</span>
+<span id="cb1-144"><a href="#cb1-144" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Other transportation"</span>,</span>
+<span id="cb1-145"><a href="#cb1-145" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Bank"</span>,</span>
+<span id="cb1-146"><a href="#cb1-146" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">31</span> <span class="sc">~</span> <span class="st">"Gym/health club"</span>,</span>
+<span id="cb1-147"><a href="#cb1-147" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">32</span> <span class="sc">~</span> <span class="st">"Post office"</span>,</span>
+<span id="cb1-148"><a href="#cb1-148" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">89</span> <span class="sc">~</span> <span class="st">"Unspecificed place"</span>,</span>
+<span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">99</span> <span class="sc">~</span> <span class="st">"Unspecified transportation"</span>,</span>
+<span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a>                         (<span class="sc">-</span><span class="dv">1</span>) <span class="sc">~</span> <span class="st">"Blank"</span></span>
+<span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a>                       )) </span>
+<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a>           ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a>                <span class="fu">rename</span>(<span class="at">participant_id =</span> TUCASEID) <span class="sc">|&gt;</span></span>
+<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a>                <span class="fu">select</span>(<span class="fu">matches</span>(<span class="st">"[:lower:]"</span>, </span>
+<span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ignore.case=</span><span class="cn">FALSE</span>))</span>
+<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a>load_atus_activities <span class="ot">&lt;-</span> <span class="cf">function</span>(){</span>
+<span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">dir.exists</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>))){</span>
+<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dir.create</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>), <span class="at">showWarnings=</span><span class="cn">FALSE</span>, <span class="at">recursive=</span><span class="cn">TRUE</span>)</span>
+<span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a>    dest_file <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="st">"data"</span>,</span>
+<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"mp02"</span>,</span>
+<span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"atus_activity_codes.csv"</span>)</span>
+<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">file.exists</span>(dest_file)){</span>
+<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a>        <span class="fu">download.file</span>(<span class="st">"https://michael-weylandt.com/STA9750/mini/atus_activity_codes.csv"</span>, </span>
+<span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a>                      <span class="at">quiet=</span><span class="cn">TRUE</span>, </span>
+<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a>                      <span class="at">destfile=</span>dest_file, </span>
+<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a>                      <span class="at">mode=</span><span class="st">"wb"</span>)</span>
+<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a>    <span class="fu">read_csv</span>(dest_file, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) </span>
+<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a>respondents  <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"resp"</span>)</span>
+<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a>cps <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>) </span>
+<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a>roster       <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>)</span>
+<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a>activities   <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"act"</span>)</span>
+<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a>activity_codes <span class="ot">&lt;-</span> <span class="fu">load_atus_activities</span>()</span>
+<span id="cb1-182"><a href="#cb1-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(respondents)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 252,808
-Columns: 12
+Columns: 14
 $ participant_id     &lt;dbl&gt; 2.00301e+13, 2.00301e+13, 2.00301e+13, 2.00301e+13,…
 $ time_alone         &lt;dbl&gt; 525, 0, 475, 350, 140, 170, 132, 105, 0, 626, 30, 4…
 $ survey_year        &lt;dbl&gt; 2003, 2003, 2003, 2003, 2003, 2003, 2003, 2003, 200…
+$ survey_month       &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
 $ weekly_earnings    &lt;dbl&gt; 66000, 20000, 20000, -1, -1, 57600, -1, 33250, 6300…
 $ survey_weight      &lt;dbl&gt; 8155462.7, 1735322.5, 3830527.5, 6622023.0, 3068387…
 $ n_children_under18 &lt;int&gt; 0, 2, 0, 2, 2, 1, 1, 1, 3, 4, 1, 1, 1, 1, 1, 2, 0, …
 $ marital_status     &lt;chr&gt; "Married - spouse present", "Married - spouse prese…
 $ has_spouse         &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, …
 $ is_retired         &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+$ in_education       &lt;lgl&gt; TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALS…
 $ labor_force_status &lt;chr&gt; "Employed - absent", "Employed - at work", "Employe…
 $ school_enrollment  &lt;chr&gt; "Blank", "Not Enrolled", "Not Enrolled", "Not Enrol…
 $ college_enrolled   &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FAL…</code></pre>
@@ -419,11 +424,12 @@ $ college_enrolled   &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE,
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 560,029
-Columns: 4
+Columns: 5
 $ participant_id &lt;dbl&gt; 2.00301e+13, 2.00301e+13, 2.00301e+13, 2.00301e+13, 2.0…
 $ marital_status &lt;chr&gt; "Never married", "Never married", "Married - spouse pre…
 $ has_spouse     &lt;lgl&gt; FALSE, FALSE, TRUE, FALSE, TRUE, TRUE, FALSE, TRUE, TRU…
-$ is_retired     &lt;lgl&gt; FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, …</code></pre>
+$ is_retired     &lt;lgl&gt; FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, …
+$ in_education   &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,…</code></pre>
 </div>
 <details class="code-fold">
 <summary>Display Code</summary>
@@ -597,23 +603,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb16-37"><a href="#cb16-37" aria-hidden="true" tabindex="-1"></a>lawn_care_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="icbgjdewcy" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#icbgjdewcy table {
+<div id="wozvklqyaq" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#wozvklqyaq table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#icbgjdewcy thead, #icbgjdewcy tbody, #icbgjdewcy tfoot, #icbgjdewcy tr, #icbgjdewcy td, #icbgjdewcy th {
+#wozvklqyaq thead, #wozvklqyaq tbody, #wozvklqyaq tfoot, #wozvklqyaq tr, #wozvklqyaq td, #wozvklqyaq th {
   border-style: none;
 }
 
-#icbgjdewcy p {
+#wozvklqyaq p {
   margin: 0;
   padding: 0;
 }
 
-#icbgjdewcy .gt_table {
+#wozvklqyaq .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -639,12 +645,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_caption {
+#wozvklqyaq .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#icbgjdewcy .gt_title {
+#wozvklqyaq .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -656,7 +662,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#icbgjdewcy .gt_subtitle {
+#wozvklqyaq .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -668,7 +674,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#icbgjdewcy .gt_heading {
+#wozvklqyaq .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -680,13 +686,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_bottom_border {
+#wozvklqyaq .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_col_headings {
+#wozvklqyaq .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -701,7 +707,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_col_heading {
+#wozvklqyaq .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -721,7 +727,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#icbgjdewcy .gt_column_spanner_outer {
+#wozvklqyaq .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -733,15 +739,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#icbgjdewcy .gt_column_spanner_outer:first-child {
+#wozvklqyaq .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#icbgjdewcy .gt_column_spanner_outer:last-child {
+#wozvklqyaq .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#icbgjdewcy .gt_column_spanner {
+#wozvklqyaq .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -753,11 +759,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#icbgjdewcy .gt_spanner_row {
+#wozvklqyaq .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#icbgjdewcy .gt_group_heading {
+#wozvklqyaq .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -783,7 +789,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#icbgjdewcy .gt_empty_group_heading {
+#wozvklqyaq .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -798,15 +804,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#icbgjdewcy .gt_from_md > :first-child {
+#wozvklqyaq .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#icbgjdewcy .gt_from_md > :last-child {
+#wozvklqyaq .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#icbgjdewcy .gt_row {
+#wozvklqyaq .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -825,7 +831,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#icbgjdewcy .gt_stub {
+#wozvklqyaq .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -838,7 +844,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#icbgjdewcy .gt_stub_row_group {
+#wozvklqyaq .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -852,15 +858,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#icbgjdewcy .gt_row_group_first td {
+#wozvklqyaq .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#icbgjdewcy .gt_row_group_first th {
+#wozvklqyaq .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#icbgjdewcy .gt_summary_row {
+#wozvklqyaq .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -870,16 +876,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#icbgjdewcy .gt_first_summary_row {
+#wozvklqyaq .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_first_summary_row.thick {
+#wozvklqyaq .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#icbgjdewcy .gt_last_summary_row {
+#wozvklqyaq .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -889,7 +895,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_grand_summary_row {
+#wozvklqyaq .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -899,7 +905,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#icbgjdewcy .gt_first_grand_summary_row {
+#wozvklqyaq .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -909,7 +915,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_last_grand_summary_row_top {
+#wozvklqyaq .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -919,11 +925,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_striped {
+#wozvklqyaq .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#icbgjdewcy .gt_table_body {
+#wozvklqyaq .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -932,7 +938,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_footnotes {
+#wozvklqyaq .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -946,7 +952,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_footnote {
+#wozvklqyaq .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -955,7 +961,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#icbgjdewcy .gt_sourcenotes {
+#wozvklqyaq .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -969,7 +975,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#icbgjdewcy .gt_sourcenote {
+#wozvklqyaq .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -977,72 +983,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#icbgjdewcy .gt_left {
+#wozvklqyaq .gt_left {
   text-align: left;
 }
 
-#icbgjdewcy .gt_center {
+#wozvklqyaq .gt_center {
   text-align: center;
 }
 
-#icbgjdewcy .gt_right {
+#wozvklqyaq .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#icbgjdewcy .gt_font_normal {
+#wozvklqyaq .gt_font_normal {
   font-weight: normal;
 }
 
-#icbgjdewcy .gt_font_bold {
+#wozvklqyaq .gt_font_bold {
   font-weight: bold;
 }
 
-#icbgjdewcy .gt_font_italic {
+#wozvklqyaq .gt_font_italic {
   font-style: italic;
 }
 
-#icbgjdewcy .gt_super {
+#wozvklqyaq .gt_super {
   font-size: 65%;
 }
 
-#icbgjdewcy .gt_footnote_marks {
+#wozvklqyaq .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#icbgjdewcy .gt_asterisk {
+#wozvklqyaq .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#icbgjdewcy .gt_indent_1 {
+#wozvklqyaq .gt_indent_1 {
   text-indent: 5px;
 }
 
-#icbgjdewcy .gt_indent_2 {
+#wozvklqyaq .gt_indent_2 {
   text-indent: 10px;
 }
 
-#icbgjdewcy .gt_indent_3 {
+#wozvklqyaq .gt_indent_3 {
   text-indent: 15px;
 }
 
-#icbgjdewcy .gt_indent_4 {
+#wozvklqyaq .gt_indent_4 {
   text-indent: 20px;
 }
 
-#icbgjdewcy .gt_indent_5 {
+#wozvklqyaq .gt_indent_5 {
   text-indent: 25px;
 }
 
-#icbgjdewcy .katex-display {
+#wozvklqyaq .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#icbgjdewcy div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#wozvklqyaq div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -1122,23 +1128,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a>social_rec_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="yghqacmoff" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#yghqacmoff table {
+<div id="nfrztralxs" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#nfrztralxs table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#yghqacmoff thead, #yghqacmoff tbody, #yghqacmoff tfoot, #yghqacmoff tr, #yghqacmoff td, #yghqacmoff th {
+#nfrztralxs thead, #nfrztralxs tbody, #nfrztralxs tfoot, #nfrztralxs tr, #nfrztralxs td, #nfrztralxs th {
   border-style: none;
 }
 
-#yghqacmoff p {
+#nfrztralxs p {
   margin: 0;
   padding: 0;
 }
 
-#yghqacmoff .gt_table {
+#nfrztralxs .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1164,12 +1170,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_caption {
+#nfrztralxs .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#yghqacmoff .gt_title {
+#nfrztralxs .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1181,7 +1187,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#yghqacmoff .gt_subtitle {
+#nfrztralxs .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1193,7 +1199,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#yghqacmoff .gt_heading {
+#nfrztralxs .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1205,13 +1211,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_bottom_border {
+#nfrztralxs .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_col_headings {
+#nfrztralxs .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1226,7 +1232,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_col_heading {
+#nfrztralxs .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1246,7 +1252,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#yghqacmoff .gt_column_spanner_outer {
+#nfrztralxs .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1258,15 +1264,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#yghqacmoff .gt_column_spanner_outer:first-child {
+#nfrztralxs .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#yghqacmoff .gt_column_spanner_outer:last-child {
+#nfrztralxs .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#yghqacmoff .gt_column_spanner {
+#nfrztralxs .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1278,11 +1284,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#yghqacmoff .gt_spanner_row {
+#nfrztralxs .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#yghqacmoff .gt_group_heading {
+#nfrztralxs .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1308,7 +1314,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#yghqacmoff .gt_empty_group_heading {
+#nfrztralxs .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1323,15 +1329,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#yghqacmoff .gt_from_md > :first-child {
+#nfrztralxs .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#yghqacmoff .gt_from_md > :last-child {
+#nfrztralxs .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#yghqacmoff .gt_row {
+#nfrztralxs .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1350,7 +1356,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#yghqacmoff .gt_stub {
+#nfrztralxs .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1363,7 +1369,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#yghqacmoff .gt_stub_row_group {
+#nfrztralxs .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1377,15 +1383,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#yghqacmoff .gt_row_group_first td {
+#nfrztralxs .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#yghqacmoff .gt_row_group_first th {
+#nfrztralxs .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#yghqacmoff .gt_summary_row {
+#nfrztralxs .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1395,16 +1401,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#yghqacmoff .gt_first_summary_row {
+#nfrztralxs .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_first_summary_row.thick {
+#nfrztralxs .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#yghqacmoff .gt_last_summary_row {
+#nfrztralxs .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1414,7 +1420,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_grand_summary_row {
+#nfrztralxs .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1424,7 +1430,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#yghqacmoff .gt_first_grand_summary_row {
+#nfrztralxs .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1434,7 +1440,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_last_grand_summary_row_top {
+#nfrztralxs .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1444,11 +1450,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_striped {
+#nfrztralxs .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#yghqacmoff .gt_table_body {
+#nfrztralxs .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1457,7 +1463,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_footnotes {
+#nfrztralxs .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1471,7 +1477,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_footnote {
+#nfrztralxs .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1480,7 +1486,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#yghqacmoff .gt_sourcenotes {
+#nfrztralxs .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1494,7 +1500,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#yghqacmoff .gt_sourcenote {
+#nfrztralxs .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1502,72 +1508,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#yghqacmoff .gt_left {
+#nfrztralxs .gt_left {
   text-align: left;
 }
 
-#yghqacmoff .gt_center {
+#nfrztralxs .gt_center {
   text-align: center;
 }
 
-#yghqacmoff .gt_right {
+#nfrztralxs .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#yghqacmoff .gt_font_normal {
+#nfrztralxs .gt_font_normal {
   font-weight: normal;
 }
 
-#yghqacmoff .gt_font_bold {
+#nfrztralxs .gt_font_bold {
   font-weight: bold;
 }
 
-#yghqacmoff .gt_font_italic {
+#nfrztralxs .gt_font_italic {
   font-style: italic;
 }
 
-#yghqacmoff .gt_super {
+#nfrztralxs .gt_super {
   font-size: 65%;
 }
 
-#yghqacmoff .gt_footnote_marks {
+#nfrztralxs .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#yghqacmoff .gt_asterisk {
+#nfrztralxs .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#yghqacmoff .gt_indent_1 {
+#nfrztralxs .gt_indent_1 {
   text-indent: 5px;
 }
 
-#yghqacmoff .gt_indent_2 {
+#nfrztralxs .gt_indent_2 {
   text-indent: 10px;
 }
 
-#yghqacmoff .gt_indent_3 {
+#nfrztralxs .gt_indent_3 {
   text-indent: 15px;
 }
 
-#yghqacmoff .gt_indent_4 {
+#nfrztralxs .gt_indent_4 {
   text-indent: 20px;
 }
 
-#yghqacmoff .gt_indent_5 {
+#nfrztralxs .gt_indent_5 {
   text-indent: 25px;
 }
 
-#yghqacmoff .katex-display {
+#nfrztralxs .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#yghqacmoff div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#nfrztralxs div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -1652,23 +1658,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb18-37"><a href="#cb18-37" aria-hidden="true" tabindex="-1"></a>high_earner_location_table  </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="jnqnjkihsn" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#jnqnjkihsn table {
+<div id="kzerkvgxjm" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#kzerkvgxjm table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#jnqnjkihsn thead, #jnqnjkihsn tbody, #jnqnjkihsn tfoot, #jnqnjkihsn tr, #jnqnjkihsn td, #jnqnjkihsn th {
+#kzerkvgxjm thead, #kzerkvgxjm tbody, #kzerkvgxjm tfoot, #kzerkvgxjm tr, #kzerkvgxjm td, #kzerkvgxjm th {
   border-style: none;
 }
 
-#jnqnjkihsn p {
+#kzerkvgxjm p {
   margin: 0;
   padding: 0;
 }
 
-#jnqnjkihsn .gt_table {
+#kzerkvgxjm .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1694,12 +1700,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_caption {
+#kzerkvgxjm .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#jnqnjkihsn .gt_title {
+#kzerkvgxjm .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1711,7 +1717,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#jnqnjkihsn .gt_subtitle {
+#kzerkvgxjm .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1723,7 +1729,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#jnqnjkihsn .gt_heading {
+#kzerkvgxjm .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1735,13 +1741,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_bottom_border {
+#kzerkvgxjm .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_col_headings {
+#kzerkvgxjm .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1756,7 +1762,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_col_heading {
+#kzerkvgxjm .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1776,7 +1782,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#jnqnjkihsn .gt_column_spanner_outer {
+#kzerkvgxjm .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1788,15 +1794,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#jnqnjkihsn .gt_column_spanner_outer:first-child {
+#kzerkvgxjm .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#jnqnjkihsn .gt_column_spanner_outer:last-child {
+#kzerkvgxjm .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#jnqnjkihsn .gt_column_spanner {
+#kzerkvgxjm .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1808,11 +1814,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#jnqnjkihsn .gt_spanner_row {
+#kzerkvgxjm .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#jnqnjkihsn .gt_group_heading {
+#kzerkvgxjm .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1838,7 +1844,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#jnqnjkihsn .gt_empty_group_heading {
+#kzerkvgxjm .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1853,15 +1859,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#jnqnjkihsn .gt_from_md > :first-child {
+#kzerkvgxjm .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#jnqnjkihsn .gt_from_md > :last-child {
+#kzerkvgxjm .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#jnqnjkihsn .gt_row {
+#kzerkvgxjm .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1880,7 +1886,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#jnqnjkihsn .gt_stub {
+#kzerkvgxjm .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1893,7 +1899,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#jnqnjkihsn .gt_stub_row_group {
+#kzerkvgxjm .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1907,15 +1913,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#jnqnjkihsn .gt_row_group_first td {
+#kzerkvgxjm .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#jnqnjkihsn .gt_row_group_first th {
+#kzerkvgxjm .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#jnqnjkihsn .gt_summary_row {
+#kzerkvgxjm .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1925,16 +1931,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#jnqnjkihsn .gt_first_summary_row {
+#kzerkvgxjm .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_first_summary_row.thick {
+#kzerkvgxjm .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#jnqnjkihsn .gt_last_summary_row {
+#kzerkvgxjm .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1944,7 +1950,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_grand_summary_row {
+#kzerkvgxjm .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1954,7 +1960,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#jnqnjkihsn .gt_first_grand_summary_row {
+#kzerkvgxjm .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1964,7 +1970,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_last_grand_summary_row_top {
+#kzerkvgxjm .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1974,11 +1980,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_striped {
+#kzerkvgxjm .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#jnqnjkihsn .gt_table_body {
+#kzerkvgxjm .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1987,7 +1993,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_footnotes {
+#kzerkvgxjm .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2001,7 +2007,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_footnote {
+#kzerkvgxjm .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -2010,7 +2016,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#jnqnjkihsn .gt_sourcenotes {
+#kzerkvgxjm .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2024,7 +2030,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#jnqnjkihsn .gt_sourcenote {
+#kzerkvgxjm .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2032,72 +2038,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#jnqnjkihsn .gt_left {
+#kzerkvgxjm .gt_left {
   text-align: left;
 }
 
-#jnqnjkihsn .gt_center {
+#kzerkvgxjm .gt_center {
   text-align: center;
 }
 
-#jnqnjkihsn .gt_right {
+#kzerkvgxjm .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#jnqnjkihsn .gt_font_normal {
+#kzerkvgxjm .gt_font_normal {
   font-weight: normal;
 }
 
-#jnqnjkihsn .gt_font_bold {
+#kzerkvgxjm .gt_font_bold {
   font-weight: bold;
 }
 
-#jnqnjkihsn .gt_font_italic {
+#kzerkvgxjm .gt_font_italic {
   font-style: italic;
 }
 
-#jnqnjkihsn .gt_super {
+#kzerkvgxjm .gt_super {
   font-size: 65%;
 }
 
-#jnqnjkihsn .gt_footnote_marks {
+#kzerkvgxjm .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#jnqnjkihsn .gt_asterisk {
+#kzerkvgxjm .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#jnqnjkihsn .gt_indent_1 {
+#kzerkvgxjm .gt_indent_1 {
   text-indent: 5px;
 }
 
-#jnqnjkihsn .gt_indent_2 {
+#kzerkvgxjm .gt_indent_2 {
   text-indent: 10px;
 }
 
-#jnqnjkihsn .gt_indent_3 {
+#kzerkvgxjm .gt_indent_3 {
   text-indent: 15px;
 }
 
-#jnqnjkihsn .gt_indent_4 {
+#kzerkvgxjm .gt_indent_4 {
   text-indent: 20px;
 }
 
-#jnqnjkihsn .gt_indent_5 {
+#kzerkvgxjm .gt_indent_5 {
   text-indent: 25px;
 }
 
-#jnqnjkihsn .katex-display {
+#kzerkvgxjm .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#jnqnjkihsn div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#kzerkvgxjm div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -2192,7 +2198,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
 <span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_align</span>(<span class="at">align =</span> <span class="st">"center"</span>, <span class="at">columns =</span> n_occurrences) <span class="sc">|&gt;</span></span>
 <span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_header</span>(</span>
-<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**Most Common Activities on Public Transportation"</span>),</span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**Most Common Activities on Public Transportation**"</span>),</span>
 <span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Activities on Bus, Subway, Train, Boat or Ferry"</span></span>
 <span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
 <span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_source_note</span>(</span>
@@ -2202,23 +2208,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>transit_activities_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="zljxfnajsv" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#zljxfnajsv table {
+<div id="aywpklkter" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#aywpklkter table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#zljxfnajsv thead, #zljxfnajsv tbody, #zljxfnajsv tfoot, #zljxfnajsv tr, #zljxfnajsv td, #zljxfnajsv th {
+#aywpklkter thead, #aywpklkter tbody, #aywpklkter tfoot, #aywpklkter tr, #aywpklkter td, #aywpklkter th {
   border-style: none;
 }
 
-#zljxfnajsv p {
+#aywpklkter p {
   margin: 0;
   padding: 0;
 }
 
-#zljxfnajsv .gt_table {
+#aywpklkter .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -2244,12 +2250,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_caption {
+#aywpklkter .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#zljxfnajsv .gt_title {
+#aywpklkter .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2261,7 +2267,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#zljxfnajsv .gt_subtitle {
+#aywpklkter .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -2273,7 +2279,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#zljxfnajsv .gt_heading {
+#aywpklkter .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2285,13 +2291,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_bottom_border {
+#aywpklkter .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_col_headings {
+#aywpklkter .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2306,7 +2312,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_col_heading {
+#aywpklkter .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2326,7 +2332,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#zljxfnajsv .gt_column_spanner_outer {
+#aywpklkter .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2338,15 +2344,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#zljxfnajsv .gt_column_spanner_outer:first-child {
+#aywpklkter .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#zljxfnajsv .gt_column_spanner_outer:last-child {
+#aywpklkter .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#zljxfnajsv .gt_column_spanner {
+#aywpklkter .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -2358,11 +2364,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#zljxfnajsv .gt_spanner_row {
+#aywpklkter .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#zljxfnajsv .gt_group_heading {
+#aywpklkter .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2388,7 +2394,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#zljxfnajsv .gt_empty_group_heading {
+#aywpklkter .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2403,15 +2409,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#zljxfnajsv .gt_from_md > :first-child {
+#aywpklkter .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#zljxfnajsv .gt_from_md > :last-child {
+#aywpklkter .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#zljxfnajsv .gt_row {
+#aywpklkter .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2430,7 +2436,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#zljxfnajsv .gt_stub {
+#aywpklkter .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2443,7 +2449,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#zljxfnajsv .gt_stub_row_group {
+#aywpklkter .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2457,15 +2463,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#zljxfnajsv .gt_row_group_first td {
+#aywpklkter .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#zljxfnajsv .gt_row_group_first th {
+#aywpklkter .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#zljxfnajsv .gt_summary_row {
+#aywpklkter .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2475,16 +2481,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#zljxfnajsv .gt_first_summary_row {
+#aywpklkter .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_first_summary_row.thick {
+#aywpklkter .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#zljxfnajsv .gt_last_summary_row {
+#aywpklkter .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2494,7 +2500,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_grand_summary_row {
+#aywpklkter .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2504,7 +2510,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#zljxfnajsv .gt_first_grand_summary_row {
+#aywpklkter .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2514,7 +2520,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_last_grand_summary_row_top {
+#aywpklkter .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2524,11 +2530,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_striped {
+#aywpklkter .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#zljxfnajsv .gt_table_body {
+#aywpklkter .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2537,7 +2543,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_footnotes {
+#aywpklkter .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2551,7 +2557,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_footnote {
+#aywpklkter .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -2560,7 +2566,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#zljxfnajsv .gt_sourcenotes {
+#aywpklkter .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2574,7 +2580,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#zljxfnajsv .gt_sourcenote {
+#aywpklkter .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2582,72 +2588,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#zljxfnajsv .gt_left {
+#aywpklkter .gt_left {
   text-align: left;
 }
 
-#zljxfnajsv .gt_center {
+#aywpklkter .gt_center {
   text-align: center;
 }
 
-#zljxfnajsv .gt_right {
+#aywpklkter .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#zljxfnajsv .gt_font_normal {
+#aywpklkter .gt_font_normal {
   font-weight: normal;
 }
 
-#zljxfnajsv .gt_font_bold {
+#aywpklkter .gt_font_bold {
   font-weight: bold;
 }
 
-#zljxfnajsv .gt_font_italic {
+#aywpklkter .gt_font_italic {
   font-style: italic;
 }
 
-#zljxfnajsv .gt_super {
+#aywpklkter .gt_super {
   font-size: 65%;
 }
 
-#zljxfnajsv .gt_footnote_marks {
+#aywpklkter .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#zljxfnajsv .gt_asterisk {
+#aywpklkter .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#zljxfnajsv .gt_indent_1 {
+#aywpklkter .gt_indent_1 {
   text-indent: 5px;
 }
 
-#zljxfnajsv .gt_indent_2 {
+#aywpklkter .gt_indent_2 {
   text-indent: 10px;
 }
 
-#zljxfnajsv .gt_indent_3 {
+#aywpklkter .gt_indent_3 {
   text-indent: 15px;
 }
 
-#zljxfnajsv .gt_indent_4 {
+#aywpklkter .gt_indent_4 {
   text-indent: 20px;
 }
 
-#zljxfnajsv .gt_indent_5 {
+#aywpklkter .gt_indent_5 {
   text-indent: 25px;
 }
 
-#zljxfnajsv .katex-display {
+#aywpklkter .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#zljxfnajsv div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#aywpklkter div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -2655,7 +2661,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
 <thead>
 <tr class="gt_heading header">
-<td colspan="2" class="gt_heading gt_title gt_font_normal">**Most Common Activities on Public Transportation</td>
+<td colspan="2" class="gt_heading gt_title gt_font_normal"><strong>Most Common Activities on Public Transportation</strong></td>
 </tr>
 <tr class="gt_heading even">
 <td colspan="2" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Activities on Bus, Subway, Train, Boat or Ferry</td>
@@ -2717,67 +2723,86 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 </div>
 </div>
 </div>
-<p><em>Most common, in this case, means most frequently reported activity as opposed to activity with most time reported spent on activity</em></p>
+<p><em>Most common, in this case, means most frequently reported activity as opposed to activity with most reported time spent on activity</em></p>
 <p><strong>5. How much time per day do Americans spend on your four favorite activities and how does this vary by age group?</strong></p>
-<p>Evelyn’s Favorite Activities: Reading (for personal interest), playing games, weightlifting or strength training</p>
+<p><strong>Evelyn’s Favorite Activities:</strong></p>
+<ul>
+<li><p>Reading (ATUS Level 3 Task Name: Reading for personal interest)</p></li>
+<li><p>Playing Video and Board Games (ATUS Level 3 Task Name: Playing games)</p></li>
+<li><p>Lifting at the Gym (ATUS Level 3 Task Name: Weightlifting or strength training)</p></li>
+<li><p>Scuba Diving (ATUS Level 3 Task Name: Participating in water sports)</p></li>
+</ul>
+<p><em><strong>Note:</strong> Analysis includes those who reported 0 time spent on these activities so we can see prevalance in the general population</em></p>
 <div class="cell">
 <details class="code-fold">
 <summary>Display Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>reading_by_age <span class="ot">&lt;-</span> activities <span class="sc">|&gt;</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(level3_code <span class="sc">==</span> <span class="st">"120312"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">right_join</span>(</span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    respondents <span class="sc">|&gt;</span> <span class="fu">select</span>(participant_id, survey_weight),</span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">join_by</span>(participant_id)</span>
-<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_spent_min =</span> <span class="fu">coalesce</span>(time_spent_min, <span class="dv">0</span>L)) <span class="sc">|&gt;</span></span>
-<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
-<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    roster <span class="sc">|&gt;</span></span>
-<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(relation <span class="sc">==</span> <span class="st">"Self"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">select</span>(participant_id, age), </span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">join_by</span>(participant_id)</span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">age_group =</span> <span class="fu">cut</span>(age, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">24</span>, <span class="dv">34</span>, <span class="dv">44</span>, <span class="dv">54</span>, <span class="dv">64</span>, <span class="cn">Inf</span>),</span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>                         <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Under 25"</span>, <span class="st">"25-34"</span>, <span class="st">"35-44"</span>, <span class="st">"45-54"</span>, <span class="st">"55-64"</span>, <span class="st">"65 and over"</span>))) <span class="sc">|&gt;</span></span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(age_group) <span class="sc">|&gt;</span></span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">avg_min =</span> <span class="fu">weighted.mean</span>(time_spent_min, survey_weight)) <span class="sc">|&gt;</span></span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(age_group)</span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>reading_by_age_table <span class="ot">&lt;-</span> reading_by_age <span class="sc">|&gt;</span></span>
-<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>() <span class="sc">|&gt;</span></span>
-<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_label</span>(</span>
-<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">age_group =</span> <span class="fu">md</span>(<span class="st">"**Age Group**"</span>),</span>
-<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">avg_min =</span> <span class="fu">md</span>(<span class="st">"**Average Minutes per Day**"</span>)</span>
-<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_align</span>(<span class="at">align =</span> <span class="st">"center"</span>, <span class="at">columns =</span> avg_min) <span class="sc">|&gt;</span></span>
-<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fmt_number</span>(avg_min, <span class="at">decimals =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span></span>
-<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_header</span>(</span>
-<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**Time Spent Reading by Age Group**"</span>), </span>
-<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Average Minutes Per Day Reading for Personal Interest"</span></span>
-<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tab_source_note</span>(</span>
-<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">source_note =</span> <span class="fu">md</span>(<span class="st">"*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*"</span>)</span>
-<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a>reading_by_age_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="st">"Reading for personal interest"</span>, <span class="st">"Playing games"</span>, <span class="st">"Weightlifting or strength training"</span>, <span class="st">"Participating in water sports"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">map</span>(\(activity_name) {</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>        code <span class="ot">&lt;-</span> activity_codes <span class="sc">|&gt;</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(task_level3 <span class="sc">==</span> activity_name) <span class="sc">|&gt;</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>            <span class="fu">pull</span>(code_level3)</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>        activities <span class="sc">|&gt;</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(level3_code <span class="sc">==</span> code) <span class="sc">|&gt;</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>            <span class="fu">right_join</span>(</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>                respondents <span class="sc">|&gt;</span> <span class="fu">select</span>(participant_id, survey_weight),</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>                <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>            ) <span class="sc">|&gt;</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>            <span class="fu">mutate</span>(<span class="at">time_spent_min =</span> <span class="fu">coalesce</span>(time_spent_min, <span class="dv">0</span>L)) <span class="sc">|&gt;</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>            <span class="fu">left_join</span>(</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>                roster <span class="sc">|&gt;</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">filter</span>(relation <span class="sc">==</span> <span class="st">"Self"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">select</span>(participant_id, age),</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>                <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>            ) <span class="sc">|&gt;</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>            <span class="fu">mutate</span>(<span class="at">age_group =</span> <span class="fu">cut</span>(age, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">24</span>, <span class="dv">34</span>, <span class="dv">44</span>, <span class="dv">54</span>, <span class="dv">64</span>, <span class="cn">Inf</span>),</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Under 25"</span>, <span class="st">"25-34"</span>, <span class="st">"35-44"</span>,</span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>                                              <span class="st">"45-54"</span>, <span class="st">"55-64"</span>, <span class="st">"65 and over"</span>)),</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>                   <span class="at">activity =</span> activity_name) <span class="sc">|&gt;</span></span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">group_by</span>(activity, age_group) <span class="sc">|&gt;</span></span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>            <span class="fu">summarise</span>(<span class="at">avg_min =</span> <span class="fu">weighted.mean</span>(time_spent_min, survey_weight),</span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>                      <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>    }) <span class="sc">|&gt;</span></span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list_rbind</span>() <span class="sc">|&gt;</span></span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> activity, <span class="at">values_from =</span> avg_min) <span class="sc">|&gt;</span></span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">gt</span>() <span class="sc">|&gt;</span></span>
+<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cols_label</span>(</span>
+<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>        <span class="at">age_group =</span> <span class="fu">md</span>(<span class="st">"**Age Group**"</span>), </span>
+<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Reading for personal interest</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Reading**"</span>),</span>
+<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Playing games</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Playing Games**"</span>),</span>
+<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Weightlifting or strength training</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Weightlifting or&lt;br&gt;Strength Training**"</span>), </span>
+<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Participating in water sports</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Participating in&lt;br&gt;Water Sports**"</span>)</span>
+<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fmt_number</span>(<span class="fu">c</span>(<span class="st">"Reading for personal interest"</span>, <span class="st">"Playing games"</span>, <span class="st">"Weightlifting or strength training"</span>, <span class="st">"Participating in water sports"</span>), </span>
+<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a>               <span class="at">decimals =</span> <span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cols_align</span>(<span class="at">align =</span> <span class="st">"center"</span>, </span>
+<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a>               <span class="at">columns =</span> <span class="fu">c</span>(<span class="st">"Reading for personal interest"</span>, <span class="st">"Playing games"</span>, <span class="st">"Weightlifting or strength training"</span>, <span class="st">"Participating in water sports"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_header</span>(</span>
+<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**Time Spent on Evelyn's Favorite Activities by Age Group**"</span>), </span>
+<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a>        <span class="at">subtitle =</span> <span class="st">"Average Minutes per Day for Each Activity"</span></span>
+<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_source_note</span>(</span>
+<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a>        <span class="at">source_note =</span> <span class="fu">md</span>(<span class="st">"*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*"</span>)</span>
+<span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="oezaujyatv" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#oezaujyatv table {
+<div id="rolbucgphz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#rolbucgphz table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#oezaujyatv thead, #oezaujyatv tbody, #oezaujyatv tfoot, #oezaujyatv tr, #oezaujyatv td, #oezaujyatv th {
+#rolbucgphz thead, #rolbucgphz tbody, #rolbucgphz tfoot, #rolbucgphz tr, #rolbucgphz td, #rolbucgphz th {
   border-style: none;
 }
 
-#oezaujyatv p {
+#rolbucgphz p {
   margin: 0;
   padding: 0;
 }
 
-#oezaujyatv .gt_table {
+#rolbucgphz .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -2803,12 +2828,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_caption {
+#rolbucgphz .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#oezaujyatv .gt_title {
+#rolbucgphz .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2820,7 +2845,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#oezaujyatv .gt_subtitle {
+#rolbucgphz .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -2832,7 +2857,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#oezaujyatv .gt_heading {
+#rolbucgphz .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2844,13 +2869,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_bottom_border {
+#rolbucgphz .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_col_headings {
+#rolbucgphz .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2865,7 +2890,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_col_heading {
+#rolbucgphz .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2885,7 +2910,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#oezaujyatv .gt_column_spanner_outer {
+#rolbucgphz .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2897,15 +2922,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#oezaujyatv .gt_column_spanner_outer:first-child {
+#rolbucgphz .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#oezaujyatv .gt_column_spanner_outer:last-child {
+#rolbucgphz .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#oezaujyatv .gt_column_spanner {
+#rolbucgphz .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -2917,11 +2942,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#oezaujyatv .gt_spanner_row {
+#rolbucgphz .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#oezaujyatv .gt_group_heading {
+#rolbucgphz .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2947,7 +2972,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#oezaujyatv .gt_empty_group_heading {
+#rolbucgphz .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2962,15 +2987,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#oezaujyatv .gt_from_md > :first-child {
+#rolbucgphz .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#oezaujyatv .gt_from_md > :last-child {
+#rolbucgphz .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#oezaujyatv .gt_row {
+#rolbucgphz .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2989,7 +3014,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#oezaujyatv .gt_stub {
+#rolbucgphz .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3002,7 +3027,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#oezaujyatv .gt_stub_row_group {
+#rolbucgphz .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3016,15 +3041,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#oezaujyatv .gt_row_group_first td {
+#rolbucgphz .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#oezaujyatv .gt_row_group_first th {
+#rolbucgphz .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#oezaujyatv .gt_summary_row {
+#rolbucgphz .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3034,16 +3059,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#oezaujyatv .gt_first_summary_row {
+#rolbucgphz .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_first_summary_row.thick {
+#rolbucgphz .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#oezaujyatv .gt_last_summary_row {
+#rolbucgphz .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3053,7 +3078,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_grand_summary_row {
+#rolbucgphz .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3063,7 +3088,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#oezaujyatv .gt_first_grand_summary_row {
+#rolbucgphz .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3073,7 +3098,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_last_grand_summary_row_top {
+#rolbucgphz .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3083,11 +3108,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_striped {
+#rolbucgphz .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#oezaujyatv .gt_table_body {
+#rolbucgphz .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3096,7 +3121,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_footnotes {
+#rolbucgphz .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3110,7 +3135,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_footnote {
+#rolbucgphz .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -3119,7 +3144,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#oezaujyatv .gt_sourcenotes {
+#rolbucgphz .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3133,7 +3158,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#oezaujyatv .gt_sourcenote {
+#rolbucgphz .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -3141,72 +3166,651 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#oezaujyatv .gt_left {
+#rolbucgphz .gt_left {
   text-align: left;
 }
 
-#oezaujyatv .gt_center {
+#rolbucgphz .gt_center {
   text-align: center;
 }
 
-#oezaujyatv .gt_right {
+#rolbucgphz .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#oezaujyatv .gt_font_normal {
+#rolbucgphz .gt_font_normal {
   font-weight: normal;
 }
 
-#oezaujyatv .gt_font_bold {
+#rolbucgphz .gt_font_bold {
   font-weight: bold;
 }
 
-#oezaujyatv .gt_font_italic {
+#rolbucgphz .gt_font_italic {
   font-style: italic;
 }
 
-#oezaujyatv .gt_super {
+#rolbucgphz .gt_super {
   font-size: 65%;
 }
 
-#oezaujyatv .gt_footnote_marks {
+#rolbucgphz .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#oezaujyatv .gt_asterisk {
+#rolbucgphz .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#oezaujyatv .gt_indent_1 {
+#rolbucgphz .gt_indent_1 {
   text-indent: 5px;
 }
 
-#oezaujyatv .gt_indent_2 {
+#rolbucgphz .gt_indent_2 {
   text-indent: 10px;
 }
 
-#oezaujyatv .gt_indent_3 {
+#rolbucgphz .gt_indent_3 {
   text-indent: 15px;
 }
 
-#oezaujyatv .gt_indent_4 {
+#rolbucgphz .gt_indent_4 {
   text-indent: 20px;
 }
 
-#oezaujyatv .gt_indent_5 {
+#rolbucgphz .gt_indent_5 {
   text-indent: 25px;
 }
 
-#oezaujyatv .katex-display {
+#rolbucgphz .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#oezaujyatv div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#rolbucgphz div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="gt_heading header">
+<td colspan="5" class="gt_heading gt_title gt_font_normal"><strong>Time Spent on Evelyn’s Favorite Activities by Age Group</strong></td>
+</tr>
+<tr class="gt_heading even">
+<td colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Average Minutes per Day for Each Activity</td>
+</tr>
+<tr class="gt_col_headings header">
+<th id="age_group" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Age Group</strong></th>
+<th id="Reading-for-personal-interest" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Reading</strong></th>
+<th id="Playing-games" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Playing Games</strong></th>
+<th id="Weightlifting-or-strength-training" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Weightlifting or<br>Strength Training</strong></th>
+<th id="Participating-in-water-sports" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Participating in<br>Water Sports</strong></th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_center" headers="age_group">Under 25</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">8</td>
+<td class="gt_row gt_center" headers="Playing games">33</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">3</td>
+<td class="gt_row gt_center" headers="Participating in water sports">3</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_center" headers="age_group">25-34</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">8</td>
+<td class="gt_row gt_center" headers="Playing games">15</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">2</td>
+<td class="gt_row gt_center" headers="Participating in water sports">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_center" headers="age_group">35-44</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">10</td>
+<td class="gt_row gt_center" headers="Playing games">8</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">1</td>
+<td class="gt_row gt_center" headers="Participating in water sports">2</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_center" headers="age_group">45-54</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">14</td>
+<td class="gt_row gt_center" headers="Playing games">6</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">1</td>
+<td class="gt_row gt_center" headers="Participating in water sports">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_center" headers="age_group">55-64</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">21</td>
+<td class="gt_row gt_center" headers="Playing games">8</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">1</td>
+<td class="gt_row gt_center" headers="Participating in water sports">1</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_center" headers="age_group">65 and over</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">37</td>
+<td class="gt_row gt_center" headers="Playing games">14</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">0</td>
+<td class="gt_row gt_center" headers="Participating in water sports">1</td>
+</tr>
+</tbody><tfoot>
+<tr class="gt_sourcenotes odd">
+<td colspan="5" class="gt_sourcenote"><em>Source: <a href="https://www.bls.gov/tus/data/datafiles-0324.htm">American Time Use Survey (ATUS)</a>, 2003-2024, U.S. Bureau of Labor Statistics</em></td>
+</tr>
+</tfoot>
+
+</table>
+
+</div>
+</div>
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="st">"Reading for personal interest"</span>, <span class="st">"Playing games"</span>, <span class="st">"Weightlifting or strength training"</span>, <span class="st">"Participating in water sports"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">map</span>(\(activity_name) {</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>        code <span class="ot">&lt;-</span> activity_codes <span class="sc">|&gt;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(task_level3 <span class="sc">==</span> activity_name) <span class="sc">|&gt;</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>            <span class="fu">pull</span>(code_level3)</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>        activities <span class="sc">|&gt;</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(level3_code <span class="sc">==</span> code) <span class="sc">|&gt;</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>            <span class="fu">inner_join</span>(</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>                respondents <span class="sc">|&gt;</span> <span class="fu">select</span>(participant_id, survey_weight),</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>                <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>            ) <span class="sc">|&gt;</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>            <span class="fu">left_join</span>(</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>                roster <span class="sc">|&gt;</span></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">filter</span>(relation <span class="sc">==</span> <span class="st">"Self"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">select</span>(participant_id, age),</span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>                <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>            ) <span class="sc">|&gt;</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>            <span class="fu">mutate</span>(<span class="at">age_group =</span> <span class="fu">cut</span>(age, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">24</span>, <span class="dv">34</span>, <span class="dv">44</span>, <span class="dv">54</span>, <span class="dv">64</span>, <span class="cn">Inf</span>),</span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>                                   <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Under 25"</span>, <span class="st">"25-34"</span>, <span class="st">"35-44"</span>,</span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>                                              <span class="st">"45-54"</span>, <span class="st">"55-64"</span>, <span class="st">"65 and over"</span>)),</span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>                   <span class="at">activity =</span> activity_name) <span class="sc">|&gt;</span></span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>            <span class="fu">group_by</span>(activity, age_group) <span class="sc">|&gt;</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">summarise</span>(<span class="at">avg_min =</span> <span class="fu">weighted.mean</span>(time_spent_min, survey_weight),</span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>                      <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>    }) <span class="sc">|&gt;</span></span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list_rbind</span>() <span class="sc">|&gt;</span></span>
+<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> activity, <span class="at">values_from =</span> avg_min) <span class="sc">|&gt;</span></span>
+<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">gt</span>() <span class="sc">|&gt;</span></span>
+<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cols_label</span>(</span>
+<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>        <span class="at">age_group =</span> <span class="fu">md</span>(<span class="st">"**Age Group**"</span>),</span>
+<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Reading for personal interest</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Reading for Personal Interest**"</span>),</span>
+<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Playing games</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Playing Games**"</span>),</span>
+<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Weightlifting or strength training</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Weightlifting or Strength Training**"</span>),</span>
+<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Participating in water sports</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">md</span>(<span class="st">"**Participating in Water Sports**"</span>)</span>
+<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fmt_number</span>(<span class="fu">c</span>(<span class="st">"Reading for personal interest"</span>, <span class="st">"Playing games"</span>, </span>
+<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a>                 <span class="st">"Weightlifting or strength training"</span>, <span class="st">"Participating in water sports"</span>),</span>
+<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a>               <span class="at">decimals =</span> <span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cols_align</span>(<span class="at">align =</span> <span class="st">"center"</span>,</span>
+<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a>               <span class="at">columns =</span> <span class="fu">c</span>(<span class="st">"Reading for personal interest"</span>, <span class="st">"Playing games"</span>,</span>
+<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"Weightlifting or strength training"</span>, <span class="st">"Participating in water sports"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_header</span>(</span>
+<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="fu">md</span>(<span class="st">"**Time Spent on Selected Activities by Age Group (Among Participants Only)**"</span>), </span>
+<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a>        <span class="at">subtitle =</span> <span class="st">"Of those who participated in activity"</span></span>
+<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb21-47"><a href="#cb21-47" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tab_source_note</span>(</span>
+<span id="cb21-48"><a href="#cb21-48" aria-hidden="true" tabindex="-1"></a>        <span class="at">source_note =</span> <span class="fu">md</span>(<span class="st">"*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*"</span>)</span>
+<span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="pjgfvkhdeu" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#pjgfvkhdeu table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#pjgfvkhdeu thead, #pjgfvkhdeu tbody, #pjgfvkhdeu tfoot, #pjgfvkhdeu tr, #pjgfvkhdeu td, #pjgfvkhdeu th {
+  border-style: none;
+}
+
+#pjgfvkhdeu p {
+  margin: 0;
+  padding: 0;
+}
+
+#pjgfvkhdeu .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#pjgfvkhdeu .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#pjgfvkhdeu .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#pjgfvkhdeu .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#pjgfvkhdeu .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#pjgfvkhdeu .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#pjgfvkhdeu .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#pjgfvkhdeu .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#pjgfvkhdeu .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#pjgfvkhdeu .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#pjgfvkhdeu .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#pjgfvkhdeu .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#pjgfvkhdeu .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#pjgfvkhdeu .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#pjgfvkhdeu .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pjgfvkhdeu .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#pjgfvkhdeu .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#pjgfvkhdeu .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#pjgfvkhdeu .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pjgfvkhdeu .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#pjgfvkhdeu .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pjgfvkhdeu .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#pjgfvkhdeu .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pjgfvkhdeu .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#pjgfvkhdeu .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#pjgfvkhdeu .gt_left {
+  text-align: left;
+}
+
+#pjgfvkhdeu .gt_center {
+  text-align: center;
+}
+
+#pjgfvkhdeu .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#pjgfvkhdeu .gt_font_normal {
+  font-weight: normal;
+}
+
+#pjgfvkhdeu .gt_font_bold {
+  font-weight: bold;
+}
+
+#pjgfvkhdeu .gt_font_italic {
+  font-style: italic;
+}
+
+#pjgfvkhdeu .gt_super {
+  font-size: 65%;
+}
+
+#pjgfvkhdeu .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#pjgfvkhdeu .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#pjgfvkhdeu .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#pjgfvkhdeu .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#pjgfvkhdeu .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#pjgfvkhdeu .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#pjgfvkhdeu .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#pjgfvkhdeu .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#pjgfvkhdeu div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -3214,44 +3818,65 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
 <thead>
 <tr class="gt_heading header">
-<td colspan="2" class="gt_heading gt_title gt_font_normal"><strong>Time Spent Reading by Age Group</strong></td>
+<td colspan="5" class="gt_heading gt_title gt_font_normal"><strong>Time Spent on Selected Activities by Age Group (Among Participants Only)</strong></td>
 </tr>
 <tr class="gt_heading even">
-<td colspan="2" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Average Minutes Per Day Reading for Personal Interest</td>
+<td colspan="5" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border">Of those who participated in activity</td>
 </tr>
 <tr class="gt_col_headings header">
 <th id="age_group" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Age Group</strong></th>
-<th id="avg_min" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Average Minutes per Day</strong></th>
+<th id="Reading-for-personal-interest" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Reading for Personal Interest</strong></th>
+<th id="Playing-games" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Playing Games</strong></th>
+<th id="Weightlifting-or-strength-training" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Weightlifting or Strength Training</strong></th>
+<th id="Participating-in-water-sports" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>Participating in Water Sports</strong></th>
 </tr>
 </thead>
 <tbody class="gt_table_body">
 <tr class="odd">
 <td class="gt_row gt_center" headers="age_group">Under 25</td>
-<td class="gt_row gt_center" headers="avg_min">8.4</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">67</td>
+<td class="gt_row gt_center" headers="Playing games">118</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">66</td>
+<td class="gt_row gt_center" headers="Participating in water sports">113</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_center" headers="age_group">25-34</td>
-<td class="gt_row gt_center" headers="avg_min">8.2</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">56</td>
+<td class="gt_row gt_center" headers="Playing games">113</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">54</td>
+<td class="gt_row gt_center" headers="Participating in water sports">104</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_center" headers="age_group">35-44</td>
-<td class="gt_row gt_center" headers="avg_min">10.4</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">54</td>
+<td class="gt_row gt_center" headers="Playing games">90</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">47</td>
+<td class="gt_row gt_center" headers="Participating in water sports">102</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_center" headers="age_group">45-54</td>
-<td class="gt_row gt_center" headers="avg_min">14.0</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">56</td>
+<td class="gt_row gt_center" headers="Playing games">85</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">46</td>
+<td class="gt_row gt_center" headers="Participating in water sports">91</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_center" headers="age_group">55-64</td>
-<td class="gt_row gt_center" headers="avg_min">20.9</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">62</td>
+<td class="gt_row gt_center" headers="Playing games">85</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">43</td>
+<td class="gt_row gt_center" headers="Participating in water sports">82</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_center" headers="age_group">65 and over</td>
-<td class="gt_row gt_center" headers="avg_min">36.5</td>
+<td class="gt_row gt_center" headers="Reading for personal interest">71</td>
+<td class="gt_row gt_center" headers="Playing games">84</td>
+<td class="gt_row gt_center" headers="Weightlifting or strength training">37</td>
+<td class="gt_row gt_center" headers="Participating in water sports">69</td>
 </tr>
 </tbody><tfoot>
 <tr class="gt_sourcenotes odd">
-<td colspan="2" class="gt_sourcenote"><em>Source: <a href="https://www.bls.gov/tus/data/datafiles-0324.htm">American Time Use Survey (ATUS)</a>, 2003-2024, U.S. Bureau of Labor Statistics</em></td>
+<td colspan="5" class="gt_sourcenote"><em>Source: <a href="https://www.bls.gov/tus/data/datafiles-0324.htm">American Time Use Survey (ATUS)</a>, 2003-2024, U.S. Bureau of Labor Statistics</em></td>
 </tr>
 </tfoot>
 
@@ -3260,11 +3885,181 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 </div>
 </div>
 </div>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time_by_age_group_table &lt;- function(activity_name){</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="co">#   act_code &lt;- activity_codes |&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(task_level3 == activity_name) |&gt;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co">#     pull(code_level3)</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   </span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="co">#   activities |&gt; </span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(level3_code == act_code) |&gt;</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="co">#     right_join(</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a><span class="co">#       respondents |&gt; select(participant_id, survey_weight),</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="co">#       join_by(participant_id)</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a><span class="co">#     mutate(time_spent_min = coalesce(time_spent_min, 0L)) |&gt;</span></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a><span class="co">#     left_join(</span></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a><span class="co">#       roster |&gt; </span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a><span class="co">#         filter(relation == "Self") |&gt;</span></span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a><span class="co">#         select(participant_id, age),</span></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a><span class="co">#       join_by(participant_id)</span></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a><span class="co">#     mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),</span></span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a><span class="co">#                             labels = c("Under 25", "25-34", "35-44", "45-54", "55-64", "65 and Over"))) |&gt;</span></span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a><span class="co">#     group_by(age_group) |&gt;</span></span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a><span class="co">#     summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |&gt;</span></span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a><span class="co">#     arrange(age_group) |&gt;</span></span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a><span class="co">#     gt() |&gt;</span></span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a><span class="co">#     cols_label(</span></span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a><span class="co">#       age_group = md("**Age Group**"), </span></span>
+<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a><span class="co">#       avg_min = md("**Average Minutes per Day**")</span></span>
+<span id="cb22-28"><a href="#cb22-28" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb22-29"><a href="#cb22-29" aria-hidden="true" tabindex="-1"></a><span class="co">#     cols_align(align = "center", columns = c(age_group, avg_min)) |&gt;</span></span>
+<span id="cb22-30"><a href="#cb22-30" aria-hidden="true" tabindex="-1"></a><span class="co">#     fmt_number(avg_min, decimals = 0) |&gt;</span></span>
+<span id="cb22-31"><a href="#cb22-31" aria-hidden="true" tabindex="-1"></a><span class="co">#     tab_header(</span></span>
+<span id="cb22-32"><a href="#cb22-32" aria-hidden="true" tabindex="-1"></a><span class="co">#       title = md(glue("**Time Spent on {activity_name} by Age Group**")),</span></span>
+<span id="cb22-33"><a href="#cb22-33" aria-hidden="true" tabindex="-1"></a><span class="co">#       subtitle = glue("Average Minutes per Day {activity_name}")</span></span>
+<span id="cb22-34"><a href="#cb22-34" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb22-35"><a href="#cb22-35" aria-hidden="true" tabindex="-1"></a><span class="co">#     tab_source_note(</span></span>
+<span id="cb22-36"><a href="#cb22-36" aria-hidden="true" tabindex="-1"></a><span class="co">#       source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")</span></span>
+<span id="cb22-37"><a href="#cb22-37" aria-hidden="true" tabindex="-1"></a><span class="co">#     )</span></span>
+<span id="cb22-38"><a href="#cb22-38" aria-hidden="true" tabindex="-1"></a><span class="co"># }</span></span>
+<span id="cb22-39"><a href="#cb22-39" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb22-40"><a href="#cb22-40" aria-hidden="true" tabindex="-1"></a><span class="co"># time_by_age_group_table("Reading for personal interest")</span></span>
+<span id="cb22-41"><a href="#cb22-41" aria-hidden="true" tabindex="-1"></a><span class="co"># time_by_age_group_table("Playing games")</span></span>
+<span id="cb22-42"><a href="#cb22-42" aria-hidden="true" tabindex="-1"></a><span class="co"># time_by_age_group_table("Weightlifting or strength training")</span></span>
+<span id="cb22-43"><a href="#cb22-43" aria-hidden="true" tabindex="-1"></a><span class="co"># time_by_age_group_table("Participating in water sports")</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
 </section>
 <section id="plots" class="level3">
 <h3 class="anchored" data-anchor-id="plots">Plots</h3>
 <p><strong>1. How does the amount of time spent on household activities change as Americans age?</strong></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>household_by_age <span class="ot">&lt;-</span> activities <span class="sc">|&gt;</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(level1_code <span class="sc">==</span> <span class="st">"020000"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">right_join</span>(</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    respondents <span class="sc">|&gt;</span> <span class="fu">select</span>(participant_id, survey_weight),</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time_spent_min =</span> <span class="fu">coalesce</span>(time_spent_min, <span class="dv">0</span>L)) <span class="sc">|&gt;</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    roster <span class="sc">|&gt;</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(relation <span class="sc">==</span> <span class="st">"Self"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">select</span>(participant_id, age),</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(age) <span class="sc">|&gt;</span></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">avg_min =</span> <span class="fu">weighted.mean</span>(time_spent_min, survey_weight, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>household_act_by_age_table <span class="ot">&lt;-</span> household_by_age <span class="sc">|&gt;</span></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> avg_min)) <span class="sc">+</span></span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"loess"</span>, <span class="at">formula =</span> y <span class="sc">~</span> x) <span class="sc">+</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">90</span>, <span class="at">by =</span> <span class="dv">10</span>)) <span class="sc">+</span></span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Time Spent on Household Activities by Age"</span>,</span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Age"</span>,</span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Average Minutes per Day"</span>,</span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">"Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"</span></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>))</span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a>household_act_by_age_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="mp02_files/figure-html/household-activities-as-Americans-age-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># household_by_age &lt;- activities |&gt;</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(level1_code == "020000") |&gt;</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co">#     right_join(</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">#         respondents |&gt; select(participant_id, survey_weight),</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="co">#         join_by(participant_id)</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co">#     mutate(time_spent_min = coalesce(time_spent_min, 0L)) |&gt;</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co">#     left_join(</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="co">#         roster |&gt;</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="co">#             filter(relation == "Self") |&gt;</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="co">#             select(participant_id, age),</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="co">#         join_by(participant_id)</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a><span class="co">#     mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),</span></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a><span class="co">#                            labels = c("Under 25", "25-34", "35-44",</span></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a><span class="co">#                                       "45-54", "55-64", "65 and over"))) |&gt;</span></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(!is.na(age_group)) |&gt;</span></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a><span class="co">#     group_by(age_group) |&gt;</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a><span class="co">#     summarise(avg_min = weighted.mean(time_spent_min, survey_weight, na.rm = TRUE))</span></span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a><span class="co"># household_by_age |&gt;</span></span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a><span class="co">#     ggplot(aes(x = age_group, y = avg_min)) +</span></span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a><span class="co">#     geom_col() +</span></span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a><span class="co">#     labs(</span></span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a><span class="co">#         title = "Time Spent on Household Activities by Age Group",</span></span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a><span class="co">#         x = "Age Group",</span></span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a><span class="co">#         y = "Average Minutes per Day",</span></span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a><span class="co">#         caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"</span></span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) +</span></span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a><span class="co">#     theme_minimal() +</span></span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a><span class="co">#     theme(plot.title = element_text(hjust = 0.5))</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
 <p><strong>2. A major perk of working in education is the freedom to spend summers how you wish. What are the most popular activities for Americans employed in education during the summer months (June, July, and August)?</strong></p>
+<p><em><strong>Note:</strong> Most popular measured by most frequently reported activity.</em></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>education_summer_activities <span class="ot">&lt;-</span> activities <span class="sc">|&gt;</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">inner_join</span>(</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>        respondents <span class="sc">|&gt;</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(in_education,</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>                   labor_force_status <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Employed - at work"</span>, <span class="st">"Employed - absent"</span>),</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>                   survey_month <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">6</span>, <span class="dv">7</span>, <span class="dv">8</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>            <span class="fu">select</span>(participant_id, survey_weight),</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>        <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">inner_join</span>(</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>        activity_codes,</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">join_by</span>(level3_code <span class="sc">==</span> code_level3)</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(task_level3) <span class="sc">|&gt;</span></span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">n_occurrences =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(<span class="fu">desc</span>(n_occurrences)) <span class="sc">|&gt;</span></span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">10</span>)</span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>education_summer_activities_table <span class="ot">&lt;-</span> education_summer_activities <span class="sc">|&gt;</span></span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">reorder</span>(task_level3, n_occurrences), <span class="at">y =</span> n_occurrences)) <span class="sc">+</span></span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">"Most Popular Summer Activities for Education Workers"</span>,</span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> <span class="st">"Activity"</span>,</span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> <span class="st">"Number of Occurrences"</span>,</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>        <span class="at">caption =</span> <span class="st">"Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"</span></span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>))</span>
+<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>education_summer_activities_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="mp02_files/figure-html/education-employees-summer-activities-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
 <p><strong>3. It is often remarked that “education is a privilege wasted on the young”. Among respondents who report being enrolled in a higher-education program, how does the amount of time allocated to various educational activities (attending class, doing homework, studying, etc.) vary by age? Does it seem to be true that older students dedicate more time to their education?</strong></p>
 <p><strong>4. A “bump plot” is an effective way to display ranking (ordinal) data and to show how it changes over time. Use a bump plot to show how the relative interest in different sports changes as a function of either age or income (your choice).</strong></p>
 <p><strong>5. How does the amount of time parents spend per child change as family size increases?</strong></p>
@@ -3273,6 +4068,22 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <section id="market-research-on-time-use-patterns-in-target-demographics" class="level2">
 <h2 class="anchored" data-anchor-id="market-research-on-time-use-patterns-in-target-demographics">Market Research on Time Use Patterns in Target Demographics</h2>
 <p>Code related to the final deliverable of the assignment goes here.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="AI Usage Statement">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>AI Usage Statement
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Claude was used to help write the code in this project, but all non-code text was generated without the use of any Generative AI tools.</p>
+</div>
+</div>
+</div>
 <hr>
 <p>This work ©2025 by er0driguez was initially prepared as a Mini-Project for STA 9750 at Baruch College. More details about this course can be found at <a href="https://michael-weylandt.com/STA9750">the course site</a> and instructions for this assignment can be found at <a href="https://michael-weylandt.com/STA9750/mini/mini02.html">MP #02</a></p>
 

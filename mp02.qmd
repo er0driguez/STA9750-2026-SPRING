@@ -82,12 +82,15 @@ load_atus_data <- function(file_base = c("resp", "rost", "act", "cps")){
                6 ~ "Never married"),
              #check if respondents are married
                has_spouse = marital_status %in% c("Married - spouse present", "Married - spouse absent"),
-               is_retired = PEMLR == 5)
+               is_retired = PEMLR == 5,
+             #check if respondent works in education by main job occupation code
+               in_education = PRDTOCC1 == 8)
              ,
            resp=file |> 
                   rename(survey_weight = TUFNWGTP, 
                          time_alone = TRTALONE, 
                          survey_year = TUYEAR,
+                         survey_month = TUMONTH,
                          weekly_earnings = TRERNWA) |>
                   #add a column that counts number of children from roster file
                   left_join(
@@ -481,7 +484,7 @@ transit_activities_table <- transit_activities |>
   ) |>
   cols_align(align = "center", columns = n_occurrences) |>
   tab_header(
-    title = md("**Most Common Activities on Public Transportation"),
+    title = md("**Most Common Activities on Public Transportation**"),
     subtitle = "Activities on Bus, Subway, Train, Boat or Ferry"
   ) |>
   tab_source_note(
@@ -492,51 +495,173 @@ transit_activities_table
 
 ```
 
-*Most common, in this case, means most frequently reported activity as opposed to activity with most time reported spent on activity*
+*Most common, in this case, means most frequently reported activity as opposed to activity with most reported time spent on activity*
 
 
 **5. How much time per day do Americans spend on your four favorite activities and how does this vary by age group?**
 
-Evelyn's Favorite Activities: Reading (for personal interest), playing games, weightlifting or strength training
+**Evelyn's Favorite Activities:**
 
-```{r reading-for-personal-time-per-day}
+* Reading (ATUS Level 3 Task Name: Reading for personal interest)
 
-reading_by_age <- activities |>
-  filter(level3_code == "120312") |>
-  right_join(
-    respondents |> select(participant_id, survey_weight),
-    join_by(participant_id)
-  ) |>
-  mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
-  left_join(
-    roster |>
-      filter(relation == "Self") |>
-      select(participant_id, age), 
-    join_by(participant_id)
-  ) |> 
-  mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
-                         labels = c("Under 25", "25-34", "35-44", "45-54", "55-64", "65 and over"))) |>
-  group_by(age_group) |>
-  summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
-  arrange(age_group)
+* Playing Video and Board Games (ATUS Level 3 Task Name: Playing games)
 
-reading_by_age_table <- reading_by_age |>
-  gt() |>
-  cols_label(
-    age_group = md("**Age Group**"),
-    avg_min = md("**Average Minutes per Day**")
-  ) |>
-  cols_align(align = "center", columns = avg_min) |>
-  fmt_number(avg_min, decimals = 1) |>
-  tab_header(
-    title = md("**Time Spent Reading by Age Group**"), 
-    subtitle = "Average Minutes Per Day Reading for Personal Interest"
-  ) |>
-  tab_source_note(
-    source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
-  )
+* Lifting at the Gym (ATUS Level 3 Task Name: Weightlifting or strength training)
 
-reading_by_age_table
+* Scuba Diving (ATUS Level 3 Task Name: Participating in water sports)
+
+***Note:** Analysis includes those who reported 0 time spent on these activities so we can see prevalance in the general population*
+
+```{r favorite-activities-by-age-group-one-table}
+
+c("Reading for personal interest", "Playing games", "Weightlifting or strength training", "Participating in water sports") |>
+    map(\(activity_name) {
+        code <- activity_codes |>
+            filter(task_level3 == activity_name) |>
+            pull(code_level3)
+        
+        activities |>
+            filter(level3_code == code) |>
+            right_join(
+                respondents |> select(participant_id, survey_weight),
+                join_by(participant_id)
+            ) |>
+            mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+            left_join(
+                roster |>
+                    filter(relation == "Self") |>
+                    select(participant_id, age),
+                join_by(participant_id)
+            ) |>
+            mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
+                                   labels = c("Under 25", "25-34", "35-44",
+                                              "45-54", "55-64", "65 and over")),
+                   activity = activity_name) |>
+            group_by(activity, age_group) |>
+            summarise(avg_min = weighted.mean(time_spent_min, survey_weight),
+                      .groups = "drop")
+    }) |>
+    list_rbind() |>
+    pivot_wider(names_from = activity, values_from = avg_min) |>
+    gt() |>
+    cols_label(
+        age_group = md("**Age Group**"), 
+        `Reading for personal interest` = md("**Reading**"),
+        `Playing games` = md("**Playing Games**"),
+        `Weightlifting or strength training` = md("**Weightlifting or<br>Strength Training**"), 
+        `Participating in water sports` = md("**Participating in<br>Water Sports**")
+    ) |>
+    fmt_number(c("Reading for personal interest", "Playing games", "Weightlifting or strength training", "Participating in water sports"), 
+               decimals = 0) |>
+    cols_align(align = "center", 
+               columns = c("Reading for personal interest", "Playing games", "Weightlifting or strength training", "Participating in water sports")) |>
+    tab_header(
+        title = md("**Time Spent on Evelyn's Favorite Activities by Age Group**"), 
+        subtitle = "Average Minutes per Day for Each Activity"
+    ) |>
+    tab_source_note(
+        source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+    )
+
+
+c("Reading for personal interest", "Playing games", "Weightlifting or strength training", "Participating in water sports") |>
+    map(\(activity_name) {
+        code <- activity_codes |>
+            filter(task_level3 == activity_name) |>
+            pull(code_level3)
+        
+        activities |>
+            filter(level3_code == code) |>
+            inner_join(
+                respondents |> select(participant_id, survey_weight),
+                join_by(participant_id)
+            ) |>
+            left_join(
+                roster |>
+                    filter(relation == "Self") |>
+                    select(participant_id, age),
+                join_by(participant_id)
+            ) |>
+            mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
+                                   labels = c("Under 25", "25-34", "35-44",
+                                              "45-54", "55-64", "65 and over")),
+                   activity = activity_name) |>
+            group_by(activity, age_group) |>
+            summarise(avg_min = weighted.mean(time_spent_min, survey_weight),
+                      .groups = "drop")
+    }) |>
+    list_rbind() |>
+    pivot_wider(names_from = activity, values_from = avg_min) |>
+    gt() |>
+    cols_label(
+        age_group = md("**Age Group**"),
+        `Reading for personal interest` = md("**Reading for Personal Interest**"),
+        `Playing games` = md("**Playing Games**"),
+        `Weightlifting or strength training` = md("**Weightlifting or Strength Training**"),
+        `Participating in water sports` = md("**Participating in Water Sports**")
+    ) |>
+    fmt_number(c("Reading for personal interest", "Playing games", 
+                 "Weightlifting or strength training", "Participating in water sports"),
+               decimals = 0) |>
+    cols_align(align = "center",
+               columns = c("Reading for personal interest", "Playing games",
+                           "Weightlifting or strength training", "Participating in water sports")) |>
+    tab_header(
+        title = md("**Time Spent on Selected Activities by Age Group (Among Participants Only)**"), 
+        subtitle = "Of those who participated in activity"
+    ) |>
+    tab_source_note(
+        source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+    )
+
+```
+
+
+```{r favorite-activities-by-age-group}
+
+# time_by_age_group_table <- function(activity_name){
+#   act_code <- activity_codes |>
+#     filter(task_level3 == activity_name) |>
+#     pull(code_level3)
+#   
+#   activities |> 
+#     filter(level3_code == act_code) |>
+#     right_join(
+#       respondents |> select(participant_id, survey_weight),
+#       join_by(participant_id)
+#     ) |>
+#     mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+#     left_join(
+#       roster |> 
+#         filter(relation == "Self") |>
+#         select(participant_id, age),
+#       join_by(participant_id)
+#     ) |>
+#     mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
+#                             labels = c("Under 25", "25-34", "35-44", "45-54", "55-64", "65 and Over"))) |>
+#     group_by(age_group) |>
+#     summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
+#     arrange(age_group) |>
+#     gt() |>
+#     cols_label(
+#       age_group = md("**Age Group**"), 
+#       avg_min = md("**Average Minutes per Day**")
+#     ) |>
+#     cols_align(align = "center", columns = c(age_group, avg_min)) |>
+#     fmt_number(avg_min, decimals = 0) |>
+#     tab_header(
+#       title = md(glue("**Time Spent on {activity_name} by Age Group**")),
+#       subtitle = glue("Average Minutes per Day {activity_name}")
+#     ) |>
+#     tab_source_note(
+#       source_note = md("*Source: [American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm), 2003-2024, U.S. Bureau of Labor Statistics*")
+#     )
+# }
+# 
+# time_by_age_group_table("Reading for personal interest")
+# time_by_age_group_table("Playing games")
+# time_by_age_group_table("Weightlifting or strength training")
+# time_by_age_group_table("Participating in water sports")
 
 ```
 
@@ -545,7 +670,116 @@ reading_by_age_table
 
 **1. How does the amount of time spent on household activities change as Americans age?**
 
+```{r household-activities-as-Americans-age}
+
+household_by_age <- activities |>
+  filter(level1_code == "020000") |>
+  right_join(
+    respondents |> select(participant_id, survey_weight),
+    join_by(participant_id)
+  ) |>
+  mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+  left_join(
+    roster |>
+      filter(relation == "Self") |>
+      select(participant_id, age),
+    join_by(participant_id)
+  ) |>
+  group_by(age) |>
+  summarise(avg_min = weighted.mean(time_spent_min, survey_weight, na.rm = TRUE))
+
+household_act_by_age_table <- household_by_age |>
+  ggplot(aes(x = age, y = avg_min)) +
+  geom_line() +
+  geom_smooth(method = "loess", formula = y ~ x) +
+  scale_x_continuous(breaks = seq(0, 90, by = 10)) +
+  labs(
+    title = "Time Spent on Household Activities by Age",
+    x = "Age",
+    y = "Average Minutes per Day",
+    caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+household_act_by_age_table
+
+
+# household_by_age <- activities |>
+#     filter(level1_code == "020000") |>
+#     right_join(
+#         respondents |> select(participant_id, survey_weight),
+#         join_by(participant_id)
+#     ) |>
+#     mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+#     left_join(
+#         roster |>
+#             filter(relation == "Self") |>
+#             select(participant_id, age),
+#         join_by(participant_id)
+#     ) |>
+#     mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
+#                            labels = c("Under 25", "25-34", "35-44",
+#                                       "45-54", "55-64", "65 and over"))) |>
+#     filter(!is.na(age_group)) |>
+#     group_by(age_group) |>
+#     summarise(avg_min = weighted.mean(time_spent_min, survey_weight, na.rm = TRUE))
+# 
+# household_by_age |>
+#     ggplot(aes(x = age_group, y = avg_min)) +
+#     geom_col() +
+#     labs(
+#         title = "Time Spent on Household Activities by Age Group",
+#         x = "Age Group",
+#         y = "Average Minutes per Day",
+#         caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+#     ) +
+#     theme_minimal() +
+#     theme(plot.title = element_text(hjust = 0.5))
+
+```
+
 **2. A major perk of working in education is the freedom to spend summers how you wish. What are the most popular activities for Americans employed in education during the summer months (June, July, and August)?**
+
+***Note:** Most popular measured by most frequently reported activity.*
+
+```{r education-employees-summer-activities}
+
+education_summer_activities <- activities |>
+    inner_join(
+        respondents |>
+            filter(in_education,
+                   labor_force_status %in% c("Employed - at work", "Employed - absent"),
+                   survey_month %in% c(6, 7, 8)) |>
+            select(participant_id, survey_weight),
+        join_by(participant_id)
+    ) |>
+    inner_join(
+        activity_codes,
+        join_by(level3_code == code_level3)
+    ) |>
+    group_by(task_level3) |>
+    summarise(n_occurrences = n()) |>
+    arrange(desc(n_occurrences)) |>
+    slice_head(n = 10)
+
+education_summer_activities_table <- education_summer_activities |>
+    ggplot(aes(x = reorder(task_level3, n_occurrences), y = n_occurrences)) +
+    geom_col() +
+    coord_flip() +
+    labs(
+        title = "Most Popular Summer Activities for Education Workers",
+        x = "Activity",
+        y = "Number of Occurrences",
+        caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+    ) +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+education_summer_activities_table
+
+```
+
 
 **3. It is often remarked that “education is a privilege wasted on the young”. Among respondents who report being enrolled in a higher-education program, how does the amount of time allocated to various educational activities (attending class, doing homework, studying, etc.) vary by age? Does it seem to be true that older students dedicate more time to their education?**
 
@@ -558,6 +792,13 @@ reading_by_age_table
 ## Market Research on Time Use Patterns in Target Demographics
 
 Code related to the final deliverable of the assignment goes here. 
+
+
+::: {.callout-note title="AI Usage Statement" collapse="true"}
+
+Claude was used to help write the code in this project, but all non-code text was generated without the use of any Generative AI tools.  
+
+:::
 
 
 
