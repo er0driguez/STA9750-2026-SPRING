@@ -286,129 +286,136 @@ window.Quarto = {
 <span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#add a column that counts number of children from roster file</span></span>
 <span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
 <span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">filter</span>(age <span class="sc">&lt;</span> <span class="dv">18</span>) <span class="sc">|&gt;</span></span>
-<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">count</span>(participant_id, <span class="at">name =</span> <span class="st">"n_children_under18"</span>),</span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">filter</span>(relation <span class="sc">==</span> <span class="st">"Self"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">select</span>(participant_id, age), </span>
 <span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
 <span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
-<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>                  <span class="co"># pull in CPS data to add marital_status and has_spouse columns</span></span>
-<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
-<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>),</span>
-<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
-<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
-<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#coalesce will turn NA values into 0</span></span>
-<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">n_children_under18 =</span> <span class="fu">coalesce</span>(n_children_under18, <span class="dv">0</span>L),</span>
-<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a>                         <span class="at">labor_force_status =</span> <span class="fu">case_match</span>(TELFS,</span>
-<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Employed - at work"</span>,</span>
-<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Employed - absent"</span>,</span>
-<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Unemployed - on layoff"</span>,</span>
-<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Unemployed - looking"</span>,</span>
-<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Not in labor force"</span>),</span>
-<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#creates column indicating enrollment</span></span>
-<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>                         <span class="at">school_enrollment =</span> <span class="fu">case_match</span>(TESCHENR,</span>
-<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Enrolled"</span>,</span>
-<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Not Enrolled"</span>,</span>
-<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>                           <span class="sc">-</span><span class="dv">1</span> <span class="sc">~</span> <span class="st">"Blank"</span>),</span>
-<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#create demographic variable that checks if enrolled and teschlvl matches college/university</span></span>
-<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>                         <span class="at">college_enrolled =</span> TESCHENR <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> TESCHLVL <span class="sc">==</span> <span class="dv">2</span>)</span>
-<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>           ,</span>
-<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>           <span class="at">rost=</span>file <span class="sc">|&gt;</span></span>
-<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">sex =</span> <span class="fu">case_match</span>(TESEX, <span class="dv">1</span> <span class="sc">~</span> <span class="st">"M"</span>, <span class="dv">2</span> <span class="sc">~</span> <span class="st">"F"</span>),</span>
-<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#adding relation to respondent</span></span>
-<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>                         <span class="at">relation =</span> <span class="fu">case_match</span>(TERRP,</span>
-<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">c</span>(<span class="dv">18</span>,<span class="dv">19</span>) <span class="sc">~</span> <span class="st">"Self"</span>,</span>
-<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Spouse"</span>,</span>
-<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Unmarried partner"</span>,</span>
-<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">22</span> <span class="sc">~</span> <span class="st">"Own household child"</span>,</span>
-<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">23</span> <span class="sc">~</span> <span class="st">"Grandchild"</span>,</span>
-<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">24</span> <span class="sc">~</span> <span class="st">"Parent"</span>,</span>
-<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">25</span> <span class="sc">~</span> <span class="st">"Brother/sister"</span>,</span>
-<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">26</span> <span class="sc">~</span> <span class="st">"Other related person"</span>,</span>
-<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">27</span> <span class="sc">~</span> <span class="st">"Foster child"</span>,</span>
-<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">28</span> <span class="sc">~</span> <span class="st">"Housemate/roommate"</span>,</span>
-<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">29</span> <span class="sc">~</span> <span class="st">"Roomer/boarder"</span>,</span>
-<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Other nonrelative"</span>,</span>
-<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">40</span> <span class="sc">~</span> <span class="st">"Own nonhousehold child &lt; 18"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rename</span>(<span class="at">age =</span> TEAGE), </span>
-<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a>           <span class="at">act =</span>file <span class="sc">|&gt;</span></span>
-<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a>                <span class="fu">mutate</span>(<span class="at">activity_n_of_day =</span> TUACTIVITY_N, </span>
-<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a>                       <span class="at">time_spent_min =</span> TUACTDUR24, </span>
-<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a>                       <span class="at">start_time =</span> TUSTARTTIM,</span>
-<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a>                       <span class="at">stop_time =</span> TUSTOPTIME, </span>
-<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level1_code =</span> <span class="fu">paste0</span>(TRTIER1P, <span class="st">"0000"</span>), </span>
-<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level2_code =</span> <span class="fu">paste0</span>(TRTIER2P, <span class="st">"00"</span>),</span>
-<span id="cb1-121"><a href="#cb1-121" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level3_code =</span> TRCODEP,</span>
-<span id="cb1-122"><a href="#cb1-122" aria-hidden="true" tabindex="-1"></a>                       <span class="co">#location of activity</span></span>
-<span id="cb1-123"><a href="#cb1-123" aria-hidden="true" tabindex="-1"></a>                       <span class="at">location =</span> <span class="fu">case_match</span>(TEWHERE,</span>
-<span id="cb1-124"><a href="#cb1-124" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Home"</span>,</span>
-<span id="cb1-125"><a href="#cb1-125" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Workplace"</span>,</span>
-<span id="cb1-126"><a href="#cb1-126" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Someone else's home"</span>,</span>
-<span id="cb1-127"><a href="#cb1-127" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Restaurant bar"</span>,</span>
-<span id="cb1-128"><a href="#cb1-128" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Place of worship"</span>,</span>
-<span id="cb1-129"><a href="#cb1-129" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">6</span> <span class="sc">~</span> <span class="st">"Grocery store"</span>,</span>
-<span id="cb1-130"><a href="#cb1-130" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">7</span> <span class="sc">~</span> <span class="st">"Other store/mall"</span>,</span>
-<span id="cb1-131"><a href="#cb1-131" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">8</span> <span class="sc">~</span> <span class="st">"School"</span>,</span>
-<span id="cb1-132"><a href="#cb1-132" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">9</span> <span class="sc">~</span> <span class="st">"Outdoors"</span>,</span>
-<span id="cb1-133"><a href="#cb1-133" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">10</span> <span class="sc">~</span> <span class="st">"Library"</span>,</span>
-<span id="cb1-134"><a href="#cb1-134" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">11</span> <span class="sc">~</span> <span class="st">"Other place"</span>,</span>
-<span id="cb1-135"><a href="#cb1-135" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">12</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (driver)"</span>,</span>
-<span id="cb1-136"><a href="#cb1-136" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">13</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (passenger)"</span>,</span>
-<span id="cb1-137"><a href="#cb1-137" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">14</span> <span class="sc">~</span> <span class="st">"Walking"</span>,</span>
-<span id="cb1-138"><a href="#cb1-138" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">15</span> <span class="sc">~</span> <span class="st">"Bus"</span>,</span>
-<span id="cb1-139"><a href="#cb1-139" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">16</span> <span class="sc">~</span> <span class="st">"Subway/train"</span>,</span>
-<span id="cb1-140"><a href="#cb1-140" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">17</span> <span class="sc">~</span> <span class="st">"Bicycle"</span>,</span>
-<span id="cb1-141"><a href="#cb1-141" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">18</span> <span class="sc">~</span> <span class="st">"Boat/ferry"</span>,</span>
-<span id="cb1-142"><a href="#cb1-142" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">19</span> <span class="sc">~</span> <span class="st">"Taxi/limousine service"</span>,</span>
-<span id="cb1-143"><a href="#cb1-143" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Airplane"</span>,</span>
-<span id="cb1-144"><a href="#cb1-144" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Other transportation"</span>,</span>
-<span id="cb1-145"><a href="#cb1-145" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Bank"</span>,</span>
-<span id="cb1-146"><a href="#cb1-146" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">31</span> <span class="sc">~</span> <span class="st">"Gym/health club"</span>,</span>
-<span id="cb1-147"><a href="#cb1-147" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">32</span> <span class="sc">~</span> <span class="st">"Post office"</span>,</span>
-<span id="cb1-148"><a href="#cb1-148" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">89</span> <span class="sc">~</span> <span class="st">"Unspecificed place"</span>,</span>
-<span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">99</span> <span class="sc">~</span> <span class="st">"Unspecified transportation"</span>,</span>
-<span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a>                         (<span class="sc">-</span><span class="dv">1</span>) <span class="sc">~</span> <span class="st">"Blank"</span></span>
-<span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a>                       )) </span>
-<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a>           ) <span class="sc">|&gt;</span> </span>
-<span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a>                <span class="fu">rename</span>(<span class="at">participant_id =</span> TUCASEID) <span class="sc">|&gt;</span></span>
-<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a>                <span class="fu">select</span>(<span class="fu">matches</span>(<span class="st">"[:lower:]"</span>, </span>
-<span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ignore.case=</span><span class="cn">FALSE</span>))</span>
-<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a>load_atus_activities <span class="ot">&lt;-</span> <span class="cf">function</span>(){</span>
-<span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">dir.exists</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>))){</span>
-<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dir.create</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>), <span class="at">showWarnings=</span><span class="cn">FALSE</span>, <span class="at">recursive=</span><span class="cn">TRUE</span>)</span>
-<span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a>    dest_file <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="st">"data"</span>,</span>
-<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"mp02"</span>,</span>
-<span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"atus_activity_codes.csv"</span>)</span>
-<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">file.exists</span>(dest_file)){</span>
-<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a>        <span class="fu">download.file</span>(<span class="st">"https://michael-weylandt.com/STA9750/mini/atus_activity_codes.csv"</span>, </span>
-<span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a>                      <span class="at">quiet=</span><span class="cn">TRUE</span>, </span>
-<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a>                      <span class="at">destfile=</span>dest_file, </span>
-<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a>                      <span class="at">mode=</span><span class="st">"wb"</span>)</span>
-<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a>    <span class="fu">read_csv</span>(dest_file, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) </span>
-<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a>respondents  <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"resp"</span>)</span>
-<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a>cps <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>) </span>
-<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a>roster       <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>)</span>
-<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a>activities   <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"act"</span>)</span>
-<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a>activity_codes <span class="ot">&lt;-</span> <span class="fu">load_atus_activities</span>()</span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">filter</span>(age <span class="sc">&lt;</span> <span class="dv">18</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>                      <span class="fu">count</span>(participant_id, <span class="at">name =</span> <span class="st">"n_children_under18"</span>),</span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a>                  <span class="co"># pull in CPS data to add marital_status and has_spouse columns</span></span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">left_join</span>(</span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>),</span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">join_by</span>(TUCASEID <span class="sc">==</span> participant_id)</span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>                  ) <span class="sc">|&gt;</span></span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>                  <span class="co">#coalesce will turn NA values into 0</span></span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">n_children_under18 =</span> <span class="fu">coalesce</span>(n_children_under18, <span class="dv">0</span>L),</span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>                         <span class="at">labor_force_status =</span> <span class="fu">case_match</span>(TELFS,</span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Employed - at work"</span>,</span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Employed - absent"</span>,</span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Unemployed - on layoff"</span>,</span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Unemployed - looking"</span>,</span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>                            <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Not in labor force"</span>),</span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#creates column indicating enrollment</span></span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>                         <span class="at">school_enrollment =</span> <span class="fu">case_match</span>(TESCHENR,</span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Enrolled"</span>,</span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Not Enrolled"</span>,</span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>                           <span class="sc">-</span><span class="dv">1</span> <span class="sc">~</span> <span class="st">"Blank"</span>),</span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#create demographic variable that checks if enrolled and teschlvl matches college/university</span></span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a>                         <span class="at">college_enrolled =</span> TESCHENR <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> TESCHLVL <span class="sc">==</span> <span class="dv">2</span>)</span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a>           ,</span>
+<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a>           <span class="at">rost=</span>file <span class="sc">|&gt;</span></span>
+<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">sex =</span> <span class="fu">case_match</span>(TESEX, <span class="dv">1</span> <span class="sc">~</span> <span class="st">"M"</span>, <span class="dv">2</span> <span class="sc">~</span> <span class="st">"F"</span>),</span>
+<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a>                         <span class="co">#adding relation to respondent</span></span>
+<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a>                         <span class="at">relation =</span> <span class="fu">case_match</span>(TERRP,</span>
+<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">c</span>(<span class="dv">18</span>,<span class="dv">19</span>) <span class="sc">~</span> <span class="st">"Self"</span>,</span>
+<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Spouse"</span>,</span>
+<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Unmarried partner"</span>,</span>
+<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">22</span> <span class="sc">~</span> <span class="st">"Own household child"</span>,</span>
+<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">23</span> <span class="sc">~</span> <span class="st">"Grandchild"</span>,</span>
+<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">24</span> <span class="sc">~</span> <span class="st">"Parent"</span>,</span>
+<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">25</span> <span class="sc">~</span> <span class="st">"Brother/sister"</span>,</span>
+<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">26</span> <span class="sc">~</span> <span class="st">"Other related person"</span>,</span>
+<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">27</span> <span class="sc">~</span> <span class="st">"Foster child"</span>,</span>
+<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">28</span> <span class="sc">~</span> <span class="st">"Housemate/roommate"</span>,</span>
+<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">29</span> <span class="sc">~</span> <span class="st">"Roomer/boarder"</span>,</span>
+<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Other nonrelative"</span>,</span>
+<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a>                           <span class="dv">40</span> <span class="sc">~</span> <span class="st">"Own nonhousehold child &lt; 18"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rename</span>(<span class="at">age =</span> TEAGE), </span>
+<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a>           <span class="at">act =</span>file <span class="sc">|&gt;</span></span>
+<span id="cb1-121"><a href="#cb1-121" aria-hidden="true" tabindex="-1"></a>                <span class="fu">mutate</span>(<span class="at">activity_n_of_day =</span> TUACTIVITY_N, </span>
+<span id="cb1-122"><a href="#cb1-122" aria-hidden="true" tabindex="-1"></a>                       <span class="at">time_spent_min =</span> TUACTDUR24, </span>
+<span id="cb1-123"><a href="#cb1-123" aria-hidden="true" tabindex="-1"></a>                       <span class="at">start_time =</span> TUSTARTTIM,</span>
+<span id="cb1-124"><a href="#cb1-124" aria-hidden="true" tabindex="-1"></a>                       <span class="at">stop_time =</span> TUSTOPTIME, </span>
+<span id="cb1-125"><a href="#cb1-125" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level1_code =</span> <span class="fu">paste0</span>(TRTIER1P, <span class="st">"0000"</span>), </span>
+<span id="cb1-126"><a href="#cb1-126" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level2_code =</span> <span class="fu">paste0</span>(TRTIER2P, <span class="st">"00"</span>),</span>
+<span id="cb1-127"><a href="#cb1-127" aria-hidden="true" tabindex="-1"></a>                       <span class="at">level3_code =</span> TRCODEP,</span>
+<span id="cb1-128"><a href="#cb1-128" aria-hidden="true" tabindex="-1"></a>                       <span class="co">#location of activity</span></span>
+<span id="cb1-129"><a href="#cb1-129" aria-hidden="true" tabindex="-1"></a>                       <span class="at">location =</span> <span class="fu">case_match</span>(TEWHERE,</span>
+<span id="cb1-130"><a href="#cb1-130" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">1</span> <span class="sc">~</span> <span class="st">"Home"</span>,</span>
+<span id="cb1-131"><a href="#cb1-131" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">2</span> <span class="sc">~</span> <span class="st">"Workplace"</span>,</span>
+<span id="cb1-132"><a href="#cb1-132" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">3</span> <span class="sc">~</span> <span class="st">"Someone else's home"</span>,</span>
+<span id="cb1-133"><a href="#cb1-133" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">4</span> <span class="sc">~</span> <span class="st">"Restaurant bar"</span>,</span>
+<span id="cb1-134"><a href="#cb1-134" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">5</span> <span class="sc">~</span> <span class="st">"Place of worship"</span>,</span>
+<span id="cb1-135"><a href="#cb1-135" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">6</span> <span class="sc">~</span> <span class="st">"Grocery store"</span>,</span>
+<span id="cb1-136"><a href="#cb1-136" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">7</span> <span class="sc">~</span> <span class="st">"Other store/mall"</span>,</span>
+<span id="cb1-137"><a href="#cb1-137" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">8</span> <span class="sc">~</span> <span class="st">"School"</span>,</span>
+<span id="cb1-138"><a href="#cb1-138" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">9</span> <span class="sc">~</span> <span class="st">"Outdoors"</span>,</span>
+<span id="cb1-139"><a href="#cb1-139" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">10</span> <span class="sc">~</span> <span class="st">"Library"</span>,</span>
+<span id="cb1-140"><a href="#cb1-140" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">11</span> <span class="sc">~</span> <span class="st">"Other place"</span>,</span>
+<span id="cb1-141"><a href="#cb1-141" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">12</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (driver)"</span>,</span>
+<span id="cb1-142"><a href="#cb1-142" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">13</span> <span class="sc">~</span> <span class="st">"Car, truck, or motorcycle (passenger)"</span>,</span>
+<span id="cb1-143"><a href="#cb1-143" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">14</span> <span class="sc">~</span> <span class="st">"Walking"</span>,</span>
+<span id="cb1-144"><a href="#cb1-144" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">15</span> <span class="sc">~</span> <span class="st">"Bus"</span>,</span>
+<span id="cb1-145"><a href="#cb1-145" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">16</span> <span class="sc">~</span> <span class="st">"Subway/train"</span>,</span>
+<span id="cb1-146"><a href="#cb1-146" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">17</span> <span class="sc">~</span> <span class="st">"Bicycle"</span>,</span>
+<span id="cb1-147"><a href="#cb1-147" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">18</span> <span class="sc">~</span> <span class="st">"Boat/ferry"</span>,</span>
+<span id="cb1-148"><a href="#cb1-148" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">19</span> <span class="sc">~</span> <span class="st">"Taxi/limousine service"</span>,</span>
+<span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">20</span> <span class="sc">~</span> <span class="st">"Airplane"</span>,</span>
+<span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">21</span> <span class="sc">~</span> <span class="st">"Other transportation"</span>,</span>
+<span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">30</span> <span class="sc">~</span> <span class="st">"Bank"</span>,</span>
+<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">31</span> <span class="sc">~</span> <span class="st">"Gym/health club"</span>,</span>
+<span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">32</span> <span class="sc">~</span> <span class="st">"Post office"</span>,</span>
+<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">89</span> <span class="sc">~</span> <span class="st">"Unspecificed place"</span>,</span>
+<span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a>                         <span class="dv">99</span> <span class="sc">~</span> <span class="st">"Unspecified transportation"</span>,</span>
+<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a>                         (<span class="sc">-</span><span class="dv">1</span>) <span class="sc">~</span> <span class="st">"Blank"</span></span>
+<span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a>                       )) </span>
+<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a>           ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a>                <span class="fu">rename</span>(<span class="at">participant_id =</span> TUCASEID) <span class="sc">|&gt;</span></span>
+<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a>                <span class="fu">select</span>(<span class="fu">matches</span>(<span class="st">"[:lower:]"</span>, </span>
+<span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ignore.case=</span><span class="cn">FALSE</span>))</span>
+<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a>load_atus_activities <span class="ot">&lt;-</span> <span class="cf">function</span>(){</span>
+<span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">dir.exists</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>))){</span>
+<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a>        <span class="fu">dir.create</span>(<span class="fu">file.path</span>(<span class="st">"data"</span>, <span class="st">"mp02"</span>), <span class="at">showWarnings=</span><span class="cn">FALSE</span>, <span class="at">recursive=</span><span class="cn">TRUE</span>)</span>
+<span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a>    dest_file <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="st">"data"</span>,</span>
+<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"mp02"</span>,</span>
+<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"atus_activity_codes.csv"</span>)</span>
+<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span>(<span class="sc">!</span><span class="fu">file.exists</span>(dest_file)){</span>
+<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a>        <span class="fu">download.file</span>(<span class="st">"https://michael-weylandt.com/STA9750/mini/atus_activity_codes.csv"</span>, </span>
+<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a>                      <span class="at">quiet=</span><span class="cn">TRUE</span>, </span>
+<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a>                      <span class="at">destfile=</span>dest_file, </span>
+<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a>                      <span class="at">mode=</span><span class="st">"wb"</span>)</span>
+<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a>    <span class="fu">read_csv</span>(dest_file, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>) </span>
+<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb1-182"><a href="#cb1-182" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(respondents)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a>respondents  <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"resp"</span>)</span>
+<span id="cb1-184"><a href="#cb1-184" aria-hidden="true" tabindex="-1"></a>cps <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"cps"</span>) </span>
+<span id="cb1-185"><a href="#cb1-185" aria-hidden="true" tabindex="-1"></a>roster       <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"rost"</span>)</span>
+<span id="cb1-186"><a href="#cb1-186" aria-hidden="true" tabindex="-1"></a>activities   <span class="ot">&lt;-</span> <span class="fu">load_atus_data</span>(<span class="st">"act"</span>)</span>
+<span id="cb1-187"><a href="#cb1-187" aria-hidden="true" tabindex="-1"></a>activity_codes <span class="ot">&lt;-</span> <span class="fu">load_atus_activities</span>()</span>
+<span id="cb1-188"><a href="#cb1-188" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-189"><a href="#cb1-189" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(respondents)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 252,808
-Columns: 14
+Columns: 15
 $ participant_id     &lt;dbl&gt; 2.00301e+13, 2.00301e+13, 2.00301e+13, 2.00301e+13,…
 $ time_alone         &lt;dbl&gt; 525, 0, 475, 350, 140, 170, 132, 105, 0, 626, 30, 4…
 $ survey_year        &lt;dbl&gt; 2003, 2003, 2003, 2003, 2003, 2003, 2003, 2003, 200…
 $ survey_month       &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
 $ weekly_earnings    &lt;dbl&gt; 66000, 20000, 20000, -1, -1, 57600, -1, 33250, 6300…
 $ survey_weight      &lt;dbl&gt; 8155462.7, 1735322.5, 3830527.5, 6622023.0, 3068387…
+$ age                &lt;dbl&gt; 60, 41, 26, 36, 51, 32, 44, 21, 33, 39, 26, 33, 42,…
 $ n_children_under18 &lt;int&gt; 0, 2, 0, 2, 2, 1, 1, 1, 3, 4, 1, 1, 1, 1, 1, 2, 0, …
 $ marital_status     &lt;chr&gt; "Married - spouse present", "Married - spouse prese…
 $ has_spouse         &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, …
@@ -603,23 +610,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb16-37"><a href="#cb16-37" aria-hidden="true" tabindex="-1"></a>lawn_care_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="wozvklqyaq" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#wozvklqyaq table {
+<div id="dsirfzwiwy" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#dsirfzwiwy table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#wozvklqyaq thead, #wozvklqyaq tbody, #wozvklqyaq tfoot, #wozvklqyaq tr, #wozvklqyaq td, #wozvklqyaq th {
+#dsirfzwiwy thead, #dsirfzwiwy tbody, #dsirfzwiwy tfoot, #dsirfzwiwy tr, #dsirfzwiwy td, #dsirfzwiwy th {
   border-style: none;
 }
 
-#wozvklqyaq p {
+#dsirfzwiwy p {
   margin: 0;
   padding: 0;
 }
 
-#wozvklqyaq .gt_table {
+#dsirfzwiwy .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -645,12 +652,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_caption {
+#dsirfzwiwy .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#wozvklqyaq .gt_title {
+#dsirfzwiwy .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -662,7 +669,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#wozvklqyaq .gt_subtitle {
+#dsirfzwiwy .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -674,7 +681,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#wozvklqyaq .gt_heading {
+#dsirfzwiwy .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -686,13 +693,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_bottom_border {
+#dsirfzwiwy .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_col_headings {
+#dsirfzwiwy .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -707,7 +714,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_col_heading {
+#dsirfzwiwy .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -727,7 +734,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#wozvklqyaq .gt_column_spanner_outer {
+#dsirfzwiwy .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -739,15 +746,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#wozvklqyaq .gt_column_spanner_outer:first-child {
+#dsirfzwiwy .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#wozvklqyaq .gt_column_spanner_outer:last-child {
+#dsirfzwiwy .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#wozvklqyaq .gt_column_spanner {
+#dsirfzwiwy .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -759,11 +766,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#wozvklqyaq .gt_spanner_row {
+#dsirfzwiwy .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#wozvklqyaq .gt_group_heading {
+#dsirfzwiwy .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -789,7 +796,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#wozvklqyaq .gt_empty_group_heading {
+#dsirfzwiwy .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -804,15 +811,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#wozvklqyaq .gt_from_md > :first-child {
+#dsirfzwiwy .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#wozvklqyaq .gt_from_md > :last-child {
+#dsirfzwiwy .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#wozvklqyaq .gt_row {
+#dsirfzwiwy .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -831,7 +838,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#wozvklqyaq .gt_stub {
+#dsirfzwiwy .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -844,7 +851,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#wozvklqyaq .gt_stub_row_group {
+#dsirfzwiwy .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -858,15 +865,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#wozvklqyaq .gt_row_group_first td {
+#dsirfzwiwy .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#wozvklqyaq .gt_row_group_first th {
+#dsirfzwiwy .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#wozvklqyaq .gt_summary_row {
+#dsirfzwiwy .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -876,16 +883,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#wozvklqyaq .gt_first_summary_row {
+#dsirfzwiwy .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_first_summary_row.thick {
+#dsirfzwiwy .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#wozvklqyaq .gt_last_summary_row {
+#dsirfzwiwy .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -895,7 +902,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_grand_summary_row {
+#dsirfzwiwy .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -905,7 +912,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#wozvklqyaq .gt_first_grand_summary_row {
+#dsirfzwiwy .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -915,7 +922,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_last_grand_summary_row_top {
+#dsirfzwiwy .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -925,11 +932,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_striped {
+#dsirfzwiwy .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#wozvklqyaq .gt_table_body {
+#dsirfzwiwy .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -938,7 +945,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_footnotes {
+#dsirfzwiwy .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -952,7 +959,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_footnote {
+#dsirfzwiwy .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -961,7 +968,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#wozvklqyaq .gt_sourcenotes {
+#dsirfzwiwy .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -975,7 +982,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#wozvklqyaq .gt_sourcenote {
+#dsirfzwiwy .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -983,72 +990,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#wozvklqyaq .gt_left {
+#dsirfzwiwy .gt_left {
   text-align: left;
 }
 
-#wozvklqyaq .gt_center {
+#dsirfzwiwy .gt_center {
   text-align: center;
 }
 
-#wozvklqyaq .gt_right {
+#dsirfzwiwy .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#wozvklqyaq .gt_font_normal {
+#dsirfzwiwy .gt_font_normal {
   font-weight: normal;
 }
 
-#wozvklqyaq .gt_font_bold {
+#dsirfzwiwy .gt_font_bold {
   font-weight: bold;
 }
 
-#wozvklqyaq .gt_font_italic {
+#dsirfzwiwy .gt_font_italic {
   font-style: italic;
 }
 
-#wozvklqyaq .gt_super {
+#dsirfzwiwy .gt_super {
   font-size: 65%;
 }
 
-#wozvklqyaq .gt_footnote_marks {
+#dsirfzwiwy .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#wozvklqyaq .gt_asterisk {
+#dsirfzwiwy .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#wozvklqyaq .gt_indent_1 {
+#dsirfzwiwy .gt_indent_1 {
   text-indent: 5px;
 }
 
-#wozvklqyaq .gt_indent_2 {
+#dsirfzwiwy .gt_indent_2 {
   text-indent: 10px;
 }
 
-#wozvklqyaq .gt_indent_3 {
+#dsirfzwiwy .gt_indent_3 {
   text-indent: 15px;
 }
 
-#wozvklqyaq .gt_indent_4 {
+#dsirfzwiwy .gt_indent_4 {
   text-indent: 20px;
 }
 
-#wozvklqyaq .gt_indent_5 {
+#dsirfzwiwy .gt_indent_5 {
   text-indent: 25px;
 }
 
-#wozvklqyaq .katex-display {
+#dsirfzwiwy .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#wozvklqyaq div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#dsirfzwiwy div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -1128,23 +1135,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a>social_rec_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="nfrztralxs" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#nfrztralxs table {
+<div id="emygjsbdep" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#emygjsbdep table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#nfrztralxs thead, #nfrztralxs tbody, #nfrztralxs tfoot, #nfrztralxs tr, #nfrztralxs td, #nfrztralxs th {
+#emygjsbdep thead, #emygjsbdep tbody, #emygjsbdep tfoot, #emygjsbdep tr, #emygjsbdep td, #emygjsbdep th {
   border-style: none;
 }
 
-#nfrztralxs p {
+#emygjsbdep p {
   margin: 0;
   padding: 0;
 }
 
-#nfrztralxs .gt_table {
+#emygjsbdep .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1170,12 +1177,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_caption {
+#emygjsbdep .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#nfrztralxs .gt_title {
+#emygjsbdep .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1187,7 +1194,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#nfrztralxs .gt_subtitle {
+#emygjsbdep .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1199,7 +1206,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#nfrztralxs .gt_heading {
+#emygjsbdep .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1211,13 +1218,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_bottom_border {
+#emygjsbdep .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_col_headings {
+#emygjsbdep .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1232,7 +1239,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_col_heading {
+#emygjsbdep .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1252,7 +1259,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#nfrztralxs .gt_column_spanner_outer {
+#emygjsbdep .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1264,15 +1271,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#nfrztralxs .gt_column_spanner_outer:first-child {
+#emygjsbdep .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#nfrztralxs .gt_column_spanner_outer:last-child {
+#emygjsbdep .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#nfrztralxs .gt_column_spanner {
+#emygjsbdep .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1284,11 +1291,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#nfrztralxs .gt_spanner_row {
+#emygjsbdep .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#nfrztralxs .gt_group_heading {
+#emygjsbdep .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1314,7 +1321,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#nfrztralxs .gt_empty_group_heading {
+#emygjsbdep .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1329,15 +1336,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#nfrztralxs .gt_from_md > :first-child {
+#emygjsbdep .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#nfrztralxs .gt_from_md > :last-child {
+#emygjsbdep .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#nfrztralxs .gt_row {
+#emygjsbdep .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1356,7 +1363,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#nfrztralxs .gt_stub {
+#emygjsbdep .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1369,7 +1376,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#nfrztralxs .gt_stub_row_group {
+#emygjsbdep .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1383,15 +1390,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#nfrztralxs .gt_row_group_first td {
+#emygjsbdep .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#nfrztralxs .gt_row_group_first th {
+#emygjsbdep .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#nfrztralxs .gt_summary_row {
+#emygjsbdep .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1401,16 +1408,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#nfrztralxs .gt_first_summary_row {
+#emygjsbdep .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_first_summary_row.thick {
+#emygjsbdep .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#nfrztralxs .gt_last_summary_row {
+#emygjsbdep .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1420,7 +1427,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_grand_summary_row {
+#emygjsbdep .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1430,7 +1437,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#nfrztralxs .gt_first_grand_summary_row {
+#emygjsbdep .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1440,7 +1447,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_last_grand_summary_row_top {
+#emygjsbdep .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1450,11 +1457,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_striped {
+#emygjsbdep .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#nfrztralxs .gt_table_body {
+#emygjsbdep .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1463,7 +1470,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_footnotes {
+#emygjsbdep .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1477,7 +1484,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_footnote {
+#emygjsbdep .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1486,7 +1493,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#nfrztralxs .gt_sourcenotes {
+#emygjsbdep .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1500,7 +1507,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#nfrztralxs .gt_sourcenote {
+#emygjsbdep .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1508,72 +1515,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#nfrztralxs .gt_left {
+#emygjsbdep .gt_left {
   text-align: left;
 }
 
-#nfrztralxs .gt_center {
+#emygjsbdep .gt_center {
   text-align: center;
 }
 
-#nfrztralxs .gt_right {
+#emygjsbdep .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#nfrztralxs .gt_font_normal {
+#emygjsbdep .gt_font_normal {
   font-weight: normal;
 }
 
-#nfrztralxs .gt_font_bold {
+#emygjsbdep .gt_font_bold {
   font-weight: bold;
 }
 
-#nfrztralxs .gt_font_italic {
+#emygjsbdep .gt_font_italic {
   font-style: italic;
 }
 
-#nfrztralxs .gt_super {
+#emygjsbdep .gt_super {
   font-size: 65%;
 }
 
-#nfrztralxs .gt_footnote_marks {
+#emygjsbdep .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#nfrztralxs .gt_asterisk {
+#emygjsbdep .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#nfrztralxs .gt_indent_1 {
+#emygjsbdep .gt_indent_1 {
   text-indent: 5px;
 }
 
-#nfrztralxs .gt_indent_2 {
+#emygjsbdep .gt_indent_2 {
   text-indent: 10px;
 }
 
-#nfrztralxs .gt_indent_3 {
+#emygjsbdep .gt_indent_3 {
   text-indent: 15px;
 }
 
-#nfrztralxs .gt_indent_4 {
+#emygjsbdep .gt_indent_4 {
   text-indent: 20px;
 }
 
-#nfrztralxs .gt_indent_5 {
+#emygjsbdep .gt_indent_5 {
   text-indent: 25px;
 }
 
-#nfrztralxs .katex-display {
+#emygjsbdep .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#nfrztralxs div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#emygjsbdep div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -1658,23 +1665,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb18-37"><a href="#cb18-37" aria-hidden="true" tabindex="-1"></a>high_earner_location_table  </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="kzerkvgxjm" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#kzerkvgxjm table {
+<div id="yvzveztvgt" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#yvzveztvgt table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#kzerkvgxjm thead, #kzerkvgxjm tbody, #kzerkvgxjm tfoot, #kzerkvgxjm tr, #kzerkvgxjm td, #kzerkvgxjm th {
+#yvzveztvgt thead, #yvzveztvgt tbody, #yvzveztvgt tfoot, #yvzveztvgt tr, #yvzveztvgt td, #yvzveztvgt th {
   border-style: none;
 }
 
-#kzerkvgxjm p {
+#yvzveztvgt p {
   margin: 0;
   padding: 0;
 }
 
-#kzerkvgxjm .gt_table {
+#yvzveztvgt .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1700,12 +1707,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_caption {
+#yvzveztvgt .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#kzerkvgxjm .gt_title {
+#yvzveztvgt .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -1717,7 +1724,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#kzerkvgxjm .gt_subtitle {
+#yvzveztvgt .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -1729,7 +1736,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#kzerkvgxjm .gt_heading {
+#yvzveztvgt .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -1741,13 +1748,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_bottom_border {
+#yvzveztvgt .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_col_headings {
+#yvzveztvgt .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1762,7 +1769,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_col_heading {
+#yvzveztvgt .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1782,7 +1789,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#kzerkvgxjm .gt_column_spanner_outer {
+#yvzveztvgt .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1794,15 +1801,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#kzerkvgxjm .gt_column_spanner_outer:first-child {
+#yvzveztvgt .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#kzerkvgxjm .gt_column_spanner_outer:last-child {
+#yvzveztvgt .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#kzerkvgxjm .gt_column_spanner {
+#yvzveztvgt .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -1814,11 +1821,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#kzerkvgxjm .gt_spanner_row {
+#yvzveztvgt .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#kzerkvgxjm .gt_group_heading {
+#yvzveztvgt .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1844,7 +1851,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#kzerkvgxjm .gt_empty_group_heading {
+#yvzveztvgt .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1859,15 +1866,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#kzerkvgxjm .gt_from_md > :first-child {
+#yvzveztvgt .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#kzerkvgxjm .gt_from_md > :last-child {
+#yvzveztvgt .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#kzerkvgxjm .gt_row {
+#yvzveztvgt .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1886,7 +1893,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#kzerkvgxjm .gt_stub {
+#yvzveztvgt .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1899,7 +1906,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#kzerkvgxjm .gt_stub_row_group {
+#yvzveztvgt .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1913,15 +1920,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#kzerkvgxjm .gt_row_group_first td {
+#yvzveztvgt .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#kzerkvgxjm .gt_row_group_first th {
+#yvzveztvgt .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#kzerkvgxjm .gt_summary_row {
+#yvzveztvgt .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1931,16 +1938,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#kzerkvgxjm .gt_first_summary_row {
+#yvzveztvgt .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_first_summary_row.thick {
+#yvzveztvgt .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#kzerkvgxjm .gt_last_summary_row {
+#yvzveztvgt .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1950,7 +1957,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_grand_summary_row {
+#yvzveztvgt .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1960,7 +1967,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#kzerkvgxjm .gt_first_grand_summary_row {
+#yvzveztvgt .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1970,7 +1977,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_last_grand_summary_row_top {
+#yvzveztvgt .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1980,11 +1987,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_striped {
+#yvzveztvgt .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#kzerkvgxjm .gt_table_body {
+#yvzveztvgt .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1993,7 +2000,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_footnotes {
+#yvzveztvgt .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2007,7 +2014,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_footnote {
+#yvzveztvgt .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -2016,7 +2023,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#kzerkvgxjm .gt_sourcenotes {
+#yvzveztvgt .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2030,7 +2037,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#kzerkvgxjm .gt_sourcenote {
+#yvzveztvgt .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2038,72 +2045,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#kzerkvgxjm .gt_left {
+#yvzveztvgt .gt_left {
   text-align: left;
 }
 
-#kzerkvgxjm .gt_center {
+#yvzveztvgt .gt_center {
   text-align: center;
 }
 
-#kzerkvgxjm .gt_right {
+#yvzveztvgt .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#kzerkvgxjm .gt_font_normal {
+#yvzveztvgt .gt_font_normal {
   font-weight: normal;
 }
 
-#kzerkvgxjm .gt_font_bold {
+#yvzveztvgt .gt_font_bold {
   font-weight: bold;
 }
 
-#kzerkvgxjm .gt_font_italic {
+#yvzveztvgt .gt_font_italic {
   font-style: italic;
 }
 
-#kzerkvgxjm .gt_super {
+#yvzveztvgt .gt_super {
   font-size: 65%;
 }
 
-#kzerkvgxjm .gt_footnote_marks {
+#yvzveztvgt .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#kzerkvgxjm .gt_asterisk {
+#yvzveztvgt .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#kzerkvgxjm .gt_indent_1 {
+#yvzveztvgt .gt_indent_1 {
   text-indent: 5px;
 }
 
-#kzerkvgxjm .gt_indent_2 {
+#yvzveztvgt .gt_indent_2 {
   text-indent: 10px;
 }
 
-#kzerkvgxjm .gt_indent_3 {
+#yvzveztvgt .gt_indent_3 {
   text-indent: 15px;
 }
 
-#kzerkvgxjm .gt_indent_4 {
+#yvzveztvgt .gt_indent_4 {
   text-indent: 20px;
 }
 
-#kzerkvgxjm .gt_indent_5 {
+#yvzveztvgt .gt_indent_5 {
   text-indent: 25px;
 }
 
-#kzerkvgxjm .katex-display {
+#yvzveztvgt .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#kzerkvgxjm div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#yvzveztvgt div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -2208,23 +2215,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>transit_activities_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="aywpklkter" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#aywpklkter table {
+<div id="ausudgnwjq" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ausudgnwjq table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#aywpklkter thead, #aywpklkter tbody, #aywpklkter tfoot, #aywpklkter tr, #aywpklkter td, #aywpklkter th {
+#ausudgnwjq thead, #ausudgnwjq tbody, #ausudgnwjq tfoot, #ausudgnwjq tr, #ausudgnwjq td, #ausudgnwjq th {
   border-style: none;
 }
 
-#aywpklkter p {
+#ausudgnwjq p {
   margin: 0;
   padding: 0;
 }
 
-#aywpklkter .gt_table {
+#ausudgnwjq .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -2250,12 +2257,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#aywpklkter .gt_caption {
+#ausudgnwjq .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#aywpklkter .gt_title {
+#ausudgnwjq .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2267,7 +2274,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#aywpklkter .gt_subtitle {
+#ausudgnwjq .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -2279,7 +2286,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#aywpklkter .gt_heading {
+#ausudgnwjq .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2291,13 +2298,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#aywpklkter .gt_bottom_border {
+#ausudgnwjq .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#aywpklkter .gt_col_headings {
+#ausudgnwjq .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2312,7 +2319,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#aywpklkter .gt_col_heading {
+#ausudgnwjq .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2332,7 +2339,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#aywpklkter .gt_column_spanner_outer {
+#ausudgnwjq .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2344,15 +2351,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#aywpklkter .gt_column_spanner_outer:first-child {
+#ausudgnwjq .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#aywpklkter .gt_column_spanner_outer:last-child {
+#ausudgnwjq .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#aywpklkter .gt_column_spanner {
+#ausudgnwjq .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -2364,11 +2371,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#aywpklkter .gt_spanner_row {
+#ausudgnwjq .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#aywpklkter .gt_group_heading {
+#ausudgnwjq .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2394,7 +2401,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#aywpklkter .gt_empty_group_heading {
+#ausudgnwjq .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2409,15 +2416,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#aywpklkter .gt_from_md > :first-child {
+#ausudgnwjq .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#aywpklkter .gt_from_md > :last-child {
+#ausudgnwjq .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#aywpklkter .gt_row {
+#ausudgnwjq .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2436,7 +2443,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#aywpklkter .gt_stub {
+#ausudgnwjq .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2449,7 +2456,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#aywpklkter .gt_stub_row_group {
+#ausudgnwjq .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2463,15 +2470,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#aywpklkter .gt_row_group_first td {
+#ausudgnwjq .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#aywpklkter .gt_row_group_first th {
+#ausudgnwjq .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#aywpklkter .gt_summary_row {
+#ausudgnwjq .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2481,16 +2488,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#aywpklkter .gt_first_summary_row {
+#ausudgnwjq .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#aywpklkter .gt_first_summary_row.thick {
+#ausudgnwjq .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#aywpklkter .gt_last_summary_row {
+#ausudgnwjq .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2500,7 +2507,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#aywpklkter .gt_grand_summary_row {
+#ausudgnwjq .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -2510,7 +2517,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#aywpklkter .gt_first_grand_summary_row {
+#ausudgnwjq .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2520,7 +2527,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#aywpklkter .gt_last_grand_summary_row_top {
+#ausudgnwjq .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2530,11 +2537,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#aywpklkter .gt_striped {
+#ausudgnwjq .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#aywpklkter .gt_table_body {
+#ausudgnwjq .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2543,7 +2550,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#aywpklkter .gt_footnotes {
+#ausudgnwjq .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2557,7 +2564,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#aywpklkter .gt_footnote {
+#ausudgnwjq .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -2566,7 +2573,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#aywpklkter .gt_sourcenotes {
+#ausudgnwjq .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -2580,7 +2587,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#aywpklkter .gt_sourcenote {
+#ausudgnwjq .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -2588,72 +2595,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#aywpklkter .gt_left {
+#ausudgnwjq .gt_left {
   text-align: left;
 }
 
-#aywpklkter .gt_center {
+#ausudgnwjq .gt_center {
   text-align: center;
 }
 
-#aywpklkter .gt_right {
+#ausudgnwjq .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#aywpklkter .gt_font_normal {
+#ausudgnwjq .gt_font_normal {
   font-weight: normal;
 }
 
-#aywpklkter .gt_font_bold {
+#ausudgnwjq .gt_font_bold {
   font-weight: bold;
 }
 
-#aywpklkter .gt_font_italic {
+#ausudgnwjq .gt_font_italic {
   font-style: italic;
 }
 
-#aywpklkter .gt_super {
+#ausudgnwjq .gt_super {
   font-size: 65%;
 }
 
-#aywpklkter .gt_footnote_marks {
+#ausudgnwjq .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#aywpklkter .gt_asterisk {
+#ausudgnwjq .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#aywpklkter .gt_indent_1 {
+#ausudgnwjq .gt_indent_1 {
   text-indent: 5px;
 }
 
-#aywpklkter .gt_indent_2 {
+#ausudgnwjq .gt_indent_2 {
   text-indent: 10px;
 }
 
-#aywpklkter .gt_indent_3 {
+#ausudgnwjq .gt_indent_3 {
   text-indent: 15px;
 }
 
-#aywpklkter .gt_indent_4 {
+#ausudgnwjq .gt_indent_4 {
   text-indent: 20px;
 }
 
-#aywpklkter .gt_indent_5 {
+#ausudgnwjq .gt_indent_5 {
   text-indent: 25px;
 }
 
-#aywpklkter .katex-display {
+#ausudgnwjq .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#aywpklkter div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#ausudgnwjq div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -2786,23 +2793,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="rolbucgphz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#rolbucgphz table {
+<div id="pqaxfcadls" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#pqaxfcadls table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#rolbucgphz thead, #rolbucgphz tbody, #rolbucgphz tfoot, #rolbucgphz tr, #rolbucgphz td, #rolbucgphz th {
+#pqaxfcadls thead, #pqaxfcadls tbody, #pqaxfcadls tfoot, #pqaxfcadls tr, #pqaxfcadls td, #pqaxfcadls th {
   border-style: none;
 }
 
-#rolbucgphz p {
+#pqaxfcadls p {
   margin: 0;
   padding: 0;
 }
 
-#rolbucgphz .gt_table {
+#pqaxfcadls .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -2828,12 +2835,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_caption {
+#pqaxfcadls .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#rolbucgphz .gt_title {
+#pqaxfcadls .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -2845,7 +2852,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#rolbucgphz .gt_subtitle {
+#pqaxfcadls .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -2857,7 +2864,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#rolbucgphz .gt_heading {
+#pqaxfcadls .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -2869,13 +2876,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_bottom_border {
+#pqaxfcadls .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_col_headings {
+#pqaxfcadls .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -2890,7 +2897,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_col_heading {
+#pqaxfcadls .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2910,7 +2917,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#rolbucgphz .gt_column_spanner_outer {
+#pqaxfcadls .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -2922,15 +2929,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#rolbucgphz .gt_column_spanner_outer:first-child {
+#pqaxfcadls .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#rolbucgphz .gt_column_spanner_outer:last-child {
+#pqaxfcadls .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#rolbucgphz .gt_column_spanner {
+#pqaxfcadls .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -2942,11 +2949,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#rolbucgphz .gt_spanner_row {
+#pqaxfcadls .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#rolbucgphz .gt_group_heading {
+#pqaxfcadls .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -2972,7 +2979,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#rolbucgphz .gt_empty_group_heading {
+#pqaxfcadls .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -2987,15 +2994,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#rolbucgphz .gt_from_md > :first-child {
+#pqaxfcadls .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#rolbucgphz .gt_from_md > :last-child {
+#pqaxfcadls .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#rolbucgphz .gt_row {
+#pqaxfcadls .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3014,7 +3021,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#rolbucgphz .gt_stub {
+#pqaxfcadls .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3027,7 +3034,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#rolbucgphz .gt_stub_row_group {
+#pqaxfcadls .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3041,15 +3048,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#rolbucgphz .gt_row_group_first td {
+#pqaxfcadls .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#rolbucgphz .gt_row_group_first th {
+#pqaxfcadls .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#rolbucgphz .gt_summary_row {
+#pqaxfcadls .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3059,16 +3066,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#rolbucgphz .gt_first_summary_row {
+#pqaxfcadls .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_first_summary_row.thick {
+#pqaxfcadls .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#rolbucgphz .gt_last_summary_row {
+#pqaxfcadls .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3078,7 +3085,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_grand_summary_row {
+#pqaxfcadls .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3088,7 +3095,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#rolbucgphz .gt_first_grand_summary_row {
+#pqaxfcadls .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3098,7 +3105,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_last_grand_summary_row_top {
+#pqaxfcadls .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3108,11 +3115,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_striped {
+#pqaxfcadls .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#rolbucgphz .gt_table_body {
+#pqaxfcadls .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3121,7 +3128,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_footnotes {
+#pqaxfcadls .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3135,7 +3142,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_footnote {
+#pqaxfcadls .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -3144,7 +3151,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#rolbucgphz .gt_sourcenotes {
+#pqaxfcadls .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3158,7 +3165,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#rolbucgphz .gt_sourcenote {
+#pqaxfcadls .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -3166,72 +3173,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#rolbucgphz .gt_left {
+#pqaxfcadls .gt_left {
   text-align: left;
 }
 
-#rolbucgphz .gt_center {
+#pqaxfcadls .gt_center {
   text-align: center;
 }
 
-#rolbucgphz .gt_right {
+#pqaxfcadls .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#rolbucgphz .gt_font_normal {
+#pqaxfcadls .gt_font_normal {
   font-weight: normal;
 }
 
-#rolbucgphz .gt_font_bold {
+#pqaxfcadls .gt_font_bold {
   font-weight: bold;
 }
 
-#rolbucgphz .gt_font_italic {
+#pqaxfcadls .gt_font_italic {
   font-style: italic;
 }
 
-#rolbucgphz .gt_super {
+#pqaxfcadls .gt_super {
   font-size: 65%;
 }
 
-#rolbucgphz .gt_footnote_marks {
+#pqaxfcadls .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#rolbucgphz .gt_asterisk {
+#pqaxfcadls .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#rolbucgphz .gt_indent_1 {
+#pqaxfcadls .gt_indent_1 {
   text-indent: 5px;
 }
 
-#rolbucgphz .gt_indent_2 {
+#pqaxfcadls .gt_indent_2 {
   text-indent: 10px;
 }
 
-#rolbucgphz .gt_indent_3 {
+#pqaxfcadls .gt_indent_3 {
   text-indent: 15px;
 }
 
-#rolbucgphz .gt_indent_4 {
+#pqaxfcadls .gt_indent_4 {
   text-indent: 20px;
 }
 
-#rolbucgphz .gt_indent_5 {
+#pqaxfcadls .gt_indent_5 {
   text-indent: 25px;
 }
 
-#rolbucgphz .katex-display {
+#pqaxfcadls .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#rolbucgphz div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#pqaxfcadls div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -3365,23 +3372,23 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 <span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
-<div id="pjgfvkhdeu" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#pjgfvkhdeu table {
+<div id="wetssnioco" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#wetssnioco table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#pjgfvkhdeu thead, #pjgfvkhdeu tbody, #pjgfvkhdeu tfoot, #pjgfvkhdeu tr, #pjgfvkhdeu td, #pjgfvkhdeu th {
+#wetssnioco thead, #wetssnioco tbody, #wetssnioco tfoot, #wetssnioco tr, #wetssnioco td, #wetssnioco th {
   border-style: none;
 }
 
-#pjgfvkhdeu p {
+#wetssnioco p {
   margin: 0;
   padding: 0;
 }
 
-#pjgfvkhdeu .gt_table {
+#wetssnioco .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -3407,12 +3414,12 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-left-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_caption {
+#wetssnioco .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#pjgfvkhdeu .gt_title {
+#wetssnioco .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -3424,7 +3431,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-width: 0;
 }
 
-#pjgfvkhdeu .gt_subtitle {
+#wetssnioco .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -3436,7 +3443,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-width: 0;
 }
 
-#pjgfvkhdeu .gt_heading {
+#wetssnioco .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -3448,13 +3455,13 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_bottom_border {
+#wetssnioco .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_col_headings {
+#wetssnioco .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3469,7 +3476,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_col_heading {
+#wetssnioco .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3489,7 +3496,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#pjgfvkhdeu .gt_column_spanner_outer {
+#wetssnioco .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3501,15 +3508,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 4px;
 }
 
-#pjgfvkhdeu .gt_column_spanner_outer:first-child {
+#wetssnioco .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#pjgfvkhdeu .gt_column_spanner_outer:last-child {
+#wetssnioco .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#pjgfvkhdeu .gt_column_spanner {
+#wetssnioco .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -3521,11 +3528,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   width: 100%;
 }
 
-#pjgfvkhdeu .gt_spanner_row {
+#wetssnioco .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#pjgfvkhdeu .gt_group_heading {
+#wetssnioco .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3551,7 +3558,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   text-align: left;
 }
 
-#pjgfvkhdeu .gt_empty_group_heading {
+#wetssnioco .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -3566,15 +3573,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: middle;
 }
 
-#pjgfvkhdeu .gt_from_md > :first-child {
+#wetssnioco .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#pjgfvkhdeu .gt_from_md > :last-child {
+#wetssnioco .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#pjgfvkhdeu .gt_row {
+#wetssnioco .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3593,7 +3600,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   overflow-x: hidden;
 }
 
-#pjgfvkhdeu .gt_stub {
+#wetssnioco .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3606,7 +3613,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#pjgfvkhdeu .gt_stub_row_group {
+#wetssnioco .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -3620,15 +3627,15 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   vertical-align: top;
 }
 
-#pjgfvkhdeu .gt_row_group_first td {
+#wetssnioco .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#pjgfvkhdeu .gt_row_group_first th {
+#wetssnioco .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#pjgfvkhdeu .gt_summary_row {
+#wetssnioco .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3638,16 +3645,16 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#pjgfvkhdeu .gt_first_summary_row {
+#wetssnioco .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_first_summary_row.thick {
+#wetssnioco .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#pjgfvkhdeu .gt_last_summary_row {
+#wetssnioco .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3657,7 +3664,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_grand_summary_row {
+#wetssnioco .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -3667,7 +3674,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#pjgfvkhdeu .gt_first_grand_summary_row {
+#wetssnioco .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3677,7 +3684,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-top-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_last_grand_summary_row_top {
+#wetssnioco .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -3687,11 +3694,11 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_striped {
+#wetssnioco .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#pjgfvkhdeu .gt_table_body {
+#wetssnioco .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -3700,7 +3707,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-bottom-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_footnotes {
+#wetssnioco .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3714,7 +3721,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_footnote {
+#wetssnioco .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -3723,7 +3730,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#pjgfvkhdeu .gt_sourcenotes {
+#wetssnioco .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -3737,7 +3744,7 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   border-right-color: #D3D3D3;
 }
 
-#pjgfvkhdeu .gt_sourcenote {
+#wetssnioco .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -3745,72 +3752,72 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
   padding-right: 5px;
 }
 
-#pjgfvkhdeu .gt_left {
+#wetssnioco .gt_left {
   text-align: left;
 }
 
-#pjgfvkhdeu .gt_center {
+#wetssnioco .gt_center {
   text-align: center;
 }
 
-#pjgfvkhdeu .gt_right {
+#wetssnioco .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#pjgfvkhdeu .gt_font_normal {
+#wetssnioco .gt_font_normal {
   font-weight: normal;
 }
 
-#pjgfvkhdeu .gt_font_bold {
+#wetssnioco .gt_font_bold {
   font-weight: bold;
 }
 
-#pjgfvkhdeu .gt_font_italic {
+#wetssnioco .gt_font_italic {
   font-style: italic;
 }
 
-#pjgfvkhdeu .gt_super {
+#wetssnioco .gt_super {
   font-size: 65%;
 }
 
-#pjgfvkhdeu .gt_footnote_marks {
+#wetssnioco .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#pjgfvkhdeu .gt_asterisk {
+#wetssnioco .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#pjgfvkhdeu .gt_indent_1 {
+#wetssnioco .gt_indent_1 {
   text-indent: 5px;
 }
 
-#pjgfvkhdeu .gt_indent_2 {
+#wetssnioco .gt_indent_2 {
   text-indent: 10px;
 }
 
-#pjgfvkhdeu .gt_indent_3 {
+#wetssnioco .gt_indent_3 {
   text-indent: 15px;
 }
 
-#pjgfvkhdeu .gt_indent_4 {
+#wetssnioco .gt_indent_4 {
   text-indent: 20px;
 }
 
-#pjgfvkhdeu .gt_indent_5 {
+#wetssnioco .gt_indent_5 {
   text-indent: 25px;
 }
 
-#pjgfvkhdeu .katex-display {
+#wetssnioco .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#pjgfvkhdeu div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#wetssnioco div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -4061,8 +4068,152 @@ $ relation       &lt;chr&gt; "Self", "Spouse", "Own household child", "Self", "S
 </div>
 </div>
 <p><strong>3. It is often remarked that “education is a privilege wasted on the young”. Among respondents who report being enrolled in a higher-education program, how does the amount of time allocated to various educational activities (attending class, doing homework, studying, etc.) vary by age? Does it seem to be true that older students dedicate more time to their education?</strong></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>education_time_by_age <span class="ot">&lt;-</span> activities <span class="sc">|&gt;</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(level1_code <span class="sc">==</span> <span class="st">"060000"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">right_join</span>(</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>        respondents <span class="sc">|&gt;</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(college_enrolled) <span class="sc">|&gt;</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>            <span class="fu">select</span>(participant_id, survey_weight, age),</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">time_spent_min =</span> <span class="fu">coalesce</span>(time_spent_min, <span class="dv">0</span>L)) <span class="sc">|&gt;</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">age_group =</span> <span class="fu">cut</span>(age, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">24</span>, <span class="dv">34</span>, <span class="dv">44</span>, <span class="dv">54</span>, <span class="dv">64</span>, <span class="cn">Inf</span>),</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>                           <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Under 25"</span>, <span class="st">"25-34"</span>, <span class="st">"35-44"</span>,</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>                                      <span class="st">"45-54"</span>, <span class="st">"55-64"</span>, <span class="st">"65 and over"</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(age_group)) <span class="sc">|&gt;</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(age_group) <span class="sc">|&gt;</span></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">avg_min =</span> <span class="fu">weighted.mean</span>(time_spent_min, survey_weight)) <span class="sc">|&gt;</span></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(age_group)</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a><span class="co"># education_time_by_age &lt;- activities |&gt;</span></span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a><span class="co">#   filter(level1_code == "060000") |&gt;</span></span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a><span class="co">#   right_join(</span></span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a><span class="co">#     respondents |&gt;</span></span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a><span class="co">#       filter(college_enrolled) |&gt;</span></span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a><span class="co">#       select(participant_id, survey_weight, age),</span></span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a><span class="co">#     join_by(participant_id)</span></span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a><span class="co">#   ) |&gt;</span></span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a><span class="co">#   mutate(time_spent_min = coalesce(time_spent_min, 0L)) |&gt;</span></span>
+<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a><span class="co">#   group_by(age) |&gt;</span></span>
+<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a><span class="co">#   summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |&gt;</span></span>
+<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a><span class="co">#   arrange(age)</span></span>
+<span id="cb26-29"><a href="#cb26-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-30"><a href="#cb26-30" aria-hidden="true" tabindex="-1"></a>education_time_by_age_table <span class="ot">&lt;-</span> education_time_by_age <span class="sc">|&gt;</span></span>
+<span id="cb26-31"><a href="#cb26-31" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age_group, <span class="at">y =</span> avg_min, <span class="at">fill =</span> age_group)) <span class="sc">+</span></span>
+<span id="cb26-32"><a href="#cb26-32" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb26-33"><a href="#cb26-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_fill_brewer</span>(<span class="at">palette =</span> <span class="st">"Set2"</span>) <span class="sc">+</span></span>
+<span id="cb26-34"><a href="#cb26-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
+<span id="cb26-35"><a href="#cb26-35" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">"Time Spent on Educational Activities by Age Group"</span>,</span>
+<span id="cb26-36"><a href="#cb26-36" aria-hidden="true" tabindex="-1"></a>        <span class="at">subtitle =</span> <span class="st">"Among respondents enrolled in higher education"</span>,</span>
+<span id="cb26-37"><a href="#cb26-37" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> <span class="st">"Age Group"</span>,</span>
+<span id="cb26-38"><a href="#cb26-38" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> <span class="st">"Average Minutes per Day"</span>,</span>
+<span id="cb26-39"><a href="#cb26-39" aria-hidden="true" tabindex="-1"></a>        <span class="at">caption =</span> <span class="st">"Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"</span></span>
+<span id="cb26-40"><a href="#cb26-40" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb26-41"><a href="#cb26-41" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb26-42"><a href="#cb26-42" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb26-43"><a href="#cb26-43" aria-hidden="true" tabindex="-1"></a>          <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>))</span>
+<span id="cb26-44"><a href="#cb26-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-45"><a href="#cb26-45" aria-hidden="true" tabindex="-1"></a>education_time_by_age_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="mp02_files/figure-html/educational-activity-time-by-age-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Among respondents who report being enrolled in a higher education program, students who are younger on average spend more time on educational activities than older students. Students under 25 report the highest average time spent on educational activities, followed by students 25-34. Students between 35-44 report the lowest average time spent on educational activities.</p>
 <p><strong>4. A “bump plot” is an effective way to display ranking (ordinal) data and to show how it changes over time. Use a bump plot to show how the relative interest in different sports changes as a function of either age or income (your choice).</strong></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># sports_by_income &lt;- activities |&gt;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="co">#     #filter by participation in sports</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(level2_code == "130100") |&gt;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co">#     inner_join(</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="co">#         respondents |&gt;</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="co">#             filter(weekly_earnings &gt; 0) |&gt;</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="co">#             select(participant_id, survey_weight, weekly_earnings),</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="co">#         join_by(participant_id)</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="co">#     inner_join(</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="co">#         activity_codes |&gt; select(code_level3, task_level3) |&gt; distinct(),</span></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="co">#         join_by(level3_code == code_level3)</span></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) |&gt;</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a><span class="co">#     mutate(income_group = cut((weekly_earnings / 100) * 52,</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a><span class="co">#                               breaks = c(0, 25000, 50000, 75000, 100000, Inf),</span></span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a><span class="co">#                               labels = c("Under $25k", "$25k-$50k", "$50k-$75k", "$75k-$100k", "Over $100k"))) |&gt;</span></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(!is.na(income_group)) |&gt;</span></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a><span class="co">#     group_by(income_group, task_level3) |&gt;</span></span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a><span class="co">#     summarise(n_occurrences = n(), .groups = "drop") |&gt;</span></span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a><span class="co">#     group_by(income_group) |&gt;</span></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a><span class="co">#     mutate(rank = rank(-n_occurrences)) |&gt;</span></span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a><span class="co">#     filter(rank &lt;= 10)</span></span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a><span class="co"># sports_by_income_table &lt;- sports_by_income |&gt;</span></span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a><span class="co">#     ggplot(aes(x = income_group, y = rank, color = task_level3, group = task_level3)) +</span></span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a><span class="co">#     geom_bump() +</span></span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a><span class="co">#     geom_point(size = 3) +</span></span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a><span class="co">#     scale_y_reverse() +</span></span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a><span class="co">#     labs(</span></span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a><span class="co">#         title = "Relative Interest in Sports by Income Group",</span></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a><span class="co">#         x = "Income Group",</span></span>
+<span id="cb27-32"><a href="#cb27-32" aria-hidden="true" tabindex="-1"></a><span class="co">#         y = "Rank",</span></span>
+<span id="cb27-33"><a href="#cb27-33" aria-hidden="true" tabindex="-1"></a><span class="co">#         color = "Sport",</span></span>
+<span id="cb27-34"><a href="#cb27-34" aria-hidden="true" tabindex="-1"></a><span class="co">#         caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"</span></span>
+<span id="cb27-35"><a href="#cb27-35" aria-hidden="true" tabindex="-1"></a><span class="co">#     ) +</span></span>
+<span id="cb27-36"><a href="#cb27-36" aria-hidden="true" tabindex="-1"></a><span class="co">#     theme_minimal() +</span></span>
+<span id="cb27-37"><a href="#cb27-37" aria-hidden="true" tabindex="-1"></a><span class="co">#     theme(plot.title = element_text(hjust = 0.5))</span></span>
+<span id="cb27-38"><a href="#cb27-38" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>
+<span id="cb27-39"><a href="#cb27-39" aria-hidden="true" tabindex="-1"></a><span class="co"># sports_by_income_table</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
 <p><strong>5. How does the amount of time parents spend per child change as family size increases?</strong></p>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>childcare_by_family_size <span class="ot">&lt;-</span> activities <span class="sc">|&gt;</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(level1_code <span class="sc">==</span> <span class="st">"030000"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">right_join</span>(</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>        respondents <span class="sc">|&gt;</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>            <span class="fu">filter</span>(n_children_under18 <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>            <span class="fu">select</span>(participant_id, survey_weight, n_children_under18),</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">join_by</span>(participant_id)</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">time_spent_min =</span> <span class="fu">coalesce</span>(time_spent_min, <span class="dv">0</span>L)) <span class="sc">|&gt;</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(participant_id, survey_weight, n_children_under18) <span class="sc">|&gt;</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">total_min =</span> <span class="fu">sum</span>(time_spent_min), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">min_per_child =</span> total_min <span class="sc">/</span> n_children_under18) <span class="sc">|&gt;</span></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(n_children_under18) <span class="sc">|&gt;</span></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">avg_min_per_child =</span> <span class="fu">weighted.mean</span>(min_per_child, survey_weight))</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>childcare_by_family_size_table <span class="ot">&lt;-</span> childcare_by_family_size <span class="sc">|&gt;</span></span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> n_children_under18, <span class="at">y =</span> avg_min_per_child)) <span class="sc">+</span></span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">1</span>, <span class="fu">max</span>(childcare_by_family_size<span class="sc">$</span>n_children_under18), <span class="at">by =</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(</span>
+<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>        <span class="at">title =</span> <span class="st">"Time Spent per Child on Childcare by Family Size"</span>,</span>
+<span id="cb28-23"><a href="#cb28-23" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> <span class="st">"Number of Children Under 18"</span>,</span>
+<span id="cb28-24"><a href="#cb28-24" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> <span class="st">"Average Minutes per Child per Day"</span>,</span>
+<span id="cb28-25"><a href="#cb28-25" aria-hidden="true" tabindex="-1"></a>        <span class="at">caption =</span> <span class="st">"Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"</span></span>
+<span id="cb28-26"><a href="#cb28-26" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb28-27"><a href="#cb28-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb28-28"><a href="#cb28-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>))</span>
+<span id="cb28-29"><a href="#cb28-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-30"><a href="#cb28-30" aria-hidden="true" tabindex="-1"></a>childcare_by_family_size_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="mp02_files/figure-html/time-per-child-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
 </section>
 </section>
 <section id="market-research-on-time-use-patterns-in-target-demographics" class="level2">

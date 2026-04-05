@@ -95,6 +95,12 @@ load_atus_data <- function(file_base = c("resp", "rost", "act", "cps")){
                   #add a column that counts number of children from roster file
                   left_join(
                     load_atus_data("rost") |>
+                      filter(relation == "Self") |>
+                      select(participant_id, age), 
+                    join_by(TUCASEID == participant_id)
+                  ) |>
+                  left_join(
+                    load_atus_data("rost") |>
                       filter(age < 18) |>
                       count(participant_id, name = "n_children_under18"),
                     join_by(TUCASEID == participant_id)
@@ -783,9 +789,142 @@ education_summer_activities_table
 
 **3. It is often remarked that “education is a privilege wasted on the young”. Among respondents who report being enrolled in a higher-education program, how does the amount of time allocated to various educational activities (attending class, doing homework, studying, etc.) vary by age? Does it seem to be true that older students dedicate more time to their education?**
 
+```{r educational-activity-time-by-age}
+
+education_time_by_age <- activities |>
+    filter(level1_code == "060000") |>
+    right_join(
+        respondents |>
+            filter(college_enrolled) |>
+            select(participant_id, survey_weight, age),
+        join_by(participant_id)
+    ) |>
+    mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+    mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
+                           labels = c("Under 25", "25-34", "35-44",
+                                      "45-54", "55-64", "65 and over"))) |>
+    filter(!is.na(age_group)) |>
+    group_by(age_group) |>
+    summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
+    arrange(age_group)
+# education_time_by_age <- activities |>
+#   filter(level1_code == "060000") |>
+#   right_join(
+#     respondents |>
+#       filter(college_enrolled) |>
+#       select(participant_id, survey_weight, age),
+#     join_by(participant_id)
+#   ) |>
+#   mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+#   group_by(age) |>
+#   summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
+#   arrange(age)
+
+education_time_by_age_table <- education_time_by_age |>
+    ggplot(aes(x = age_group, y = avg_min, fill = age_group)) +
+    geom_col() +
+    scale_fill_brewer(palette = "Set2") +
+    labs(
+        title = "Time Spent on Educational Activities by Age Group",
+        subtitle = "Among respondents enrolled in higher education",
+        x = "Age Group",
+        y = "Average Minutes per Day",
+        caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+    ) +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5))
+
+education_time_by_age_table
+
+```
+
+Among respondents who report being enrolled in a higher education program, students who are younger on average spend more time on educational activities than older students. Students under 25 report the highest average time spent on educational activities, followed by students 25-34. Students between 35-44 report the lowest average time spent on educational activities. 
+
 **4. A “bump plot” is an effective way to display ranking (ordinal) data and to show how it changes over time. Use a bump plot to show how the relative interest in different sports changes as a function of either age or income (your choice).**
 
+```{r sports-by-income}
+
+# sports_by_income <- activities |>
+#     #filter by participation in sports
+#     filter(level2_code == "130100") |>
+#     inner_join(
+#         respondents |>
+#             filter(weekly_earnings > 0) |>
+#             select(participant_id, survey_weight, weekly_earnings),
+#         join_by(participant_id)
+#     ) |>
+#     inner_join(
+#         activity_codes |> select(code_level3, task_level3) |> distinct(),
+#         join_by(level3_code == code_level3)
+#     ) |>
+#     mutate(income_group = cut((weekly_earnings / 100) * 52,
+#                               breaks = c(0, 25000, 50000, 75000, 100000, Inf),
+#                               labels = c("Under $25k", "$25k-$50k", "$50k-$75k", "$75k-$100k", "Over $100k"))) |>
+#     filter(!is.na(income_group)) |>
+#     group_by(income_group, task_level3) |>
+#     summarise(n_occurrences = n(), .groups = "drop") |>
+#     group_by(income_group) |>
+#     mutate(rank = rank(-n_occurrences)) |>
+#     filter(rank <= 10)
+# 
+# sports_by_income_table <- sports_by_income |>
+#     ggplot(aes(x = income_group, y = rank, color = task_level3, group = task_level3)) +
+#     geom_bump() +
+#     geom_point(size = 3) +
+#     scale_y_reverse() +
+#     labs(
+#         title = "Relative Interest in Sports by Income Group",
+#         x = "Income Group",
+#         y = "Rank",
+#         color = "Sport",
+#         caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+#     ) +
+#     theme_minimal() +
+#     theme(plot.title = element_text(hjust = 0.5))
+# 
+# sports_by_income_table
+
+```
+
+
+
 **5. How does the amount of time parents spend per child change as family size increases?**
+
+```{r time-per-child}
+
+childcare_by_family_size <- activities |>
+    filter(level1_code == "030000") |>
+    right_join(
+        respondents |>
+            filter(n_children_under18 > 0) |>
+            select(participant_id, survey_weight, n_children_under18),
+        join_by(participant_id)
+    ) |>
+    mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
+    group_by(participant_id, survey_weight, n_children_under18) |>
+    summarise(total_min = sum(time_spent_min), .groups = "drop") |>
+    mutate(min_per_child = total_min / n_children_under18) |>
+    group_by(n_children_under18) |>
+    summarise(avg_min_per_child = weighted.mean(min_per_child, survey_weight))
+
+childcare_by_family_size_table <- childcare_by_family_size |>
+    ggplot(aes(x = n_children_under18, y = avg_min_per_child)) +
+    geom_line() +
+    geom_point(size = 3) +
+    scale_x_continuous(breaks = seq(1, max(childcare_by_family_size$n_children_under18), by = 1)) +
+    labs(
+        title = "Time Spent per Child on Childcare by Family Size",
+        x = "Number of Children Under 18",
+        y = "Average Minutes per Child per Day",
+        caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+childcare_by_family_size_table
+
+```
 
 
 
