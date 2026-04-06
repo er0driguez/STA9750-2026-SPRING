@@ -14,18 +14,7 @@ format:
         highlight-style: "a11y"
 ---
 
-## Introduction
-
-A suitable introduction goes here. In this mini-project, I intend to demonstrate
-my skills at Combining Data/Data Visualization in an analysis of Survey Date/Social Sciences data.
-
-## Data Acquisition and Preparation
-
-### Data Acquisition from ATUS
-
-```{r data-acquisitions}
-#| warning: false
-# Your code goes in chunks like this
+```{r setup, include=FALSE}
 
 library(tidyverse)
 library(glue)
@@ -36,7 +25,26 @@ library(dplyr)
 library(scales)
 library(gt)
 library(Hmisc)
-library(patchwork)
+library(gridExtra)
+
+```
+
+
+## Introduction
+
+The *[American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm)* is a joint effort between the US Bureau of Labor Statistics and the US Census Bureau to capture how Americans spend their time everyday. Over 20 years, Americans recorded what they did and in this mini-project I will analyze how that time was spent in order to find and compare time usage patterns across key demographic groups. I will explore the ATUS data using dplyr tools to combine and manipulate the data to extract important demographic data. I will analyze the data with complex analytic pipelines, which I will then summarize for a non-technical audience with data visualization. 
+
+In my final analysis, I will pose as a product manager for a time management app and create a market research article that applies this data and focuses on the time use patterns in three target demographics.
+
+
+## Data Acquisition and Preparation
+
+### Data Acquisition from ATUS
+
+Data is acquired from ATUS resources websites, cleaned and combined into data frames that identify survey respondents, survey activities, their corresponding activity codes and important demographic information. 
+
+```{r data-acquisitions}
+#| warning: false
 
 load_atus_data <- function(file_base = c("resp", "rost", "act", "cps")){
     if(!dir.exists(file.path("data", "mp02"))){
@@ -215,32 +223,9 @@ roster       <- load_atus_data("rost")
 activities   <- load_atus_data("act")
 activity_codes <- load_atus_activities()
 
-glimpse(respondents)
-
-glimpse(cps)
-
-glimpse(activities)
-
-glimpse(activity_codes)
-
-glimpse(roster)
-
-
 ```
-
-and you can then print variables from chunks: 
-
-```{r}
-
-```
-
-or inline, like this: $x$ is .
 
 ## Exploratory Analysis
-
-Code related to Exploratory Data Analysis goes here. This may include
-exploratory graphics, instructor-provided exploratory questions, or other
-similar elements. 
 
 ### Inline Values
 
@@ -327,7 +312,7 @@ avg_childcare_hours <- activities |>
 
 ```
 
-On average, American with one or more children spend `r round(avg_childcare_hours, 2)` hours taking care of their children. 
+On average, Americans with one or more children spend `r round(avg_childcare_hours, 2)` hours taking care of their children. 
 
 
 ### Tables
@@ -418,8 +403,12 @@ social_rec_table
 
 ```
 
+Married people spend  less time on social and recreational activities as compared to unmarried people. 
 
 **3. Where do high-earning Americans spend the majority of their time?**
+
+***Note:** High earners are defined as those earning above the 75th percentile for weekly earnings*
+
 
 ```{r high-earner-time}
 
@@ -464,11 +453,13 @@ high_earner_location_table
 
 ```
 
+High-earning Americans spend the majority of their time in the workplace, on an airplane or in a place of worship. 
 
-*High earners are defined as those earning above the 75th percentile for weekly earnings*
 
 
 **4. What are the most common activities reported by Americans when on a bus, train, subway, boat, or ferry?**
+
+***Note:** Most common, in this case, means most frequently reported activity as opposed to activity with most reported time spent on activity*
 
 ```{r common-transit-activities}
 
@@ -503,22 +494,21 @@ transit_activities_table
 
 ```
 
-*Most common, in this case, means most frequently reported activity as opposed to activity with most reported time spent on activity*
-
+The most common activities reported when on a bus, train, subway, boat or ferry are traveling to work, traveling to class, or traveling to eat or drink. 
 
 **5. How much time per day do Americans spend on your four favorite activities and how does this vary by age group?**
 
 **Evelyn's Favorite Activities:**
 
-* Reading (ATUS Level 3 Task Name: Reading for personal interest)
+* Reading *(ATUS Level 3 Task Name: Reading for personal interest)*
 
-* Playing Video and Board Games (ATUS Level 3 Task Name: Playing games)
+* Playing Video and Board Games *(ATUS Level 3 Task Name: Playing games)*
 
-* Lifting at the Gym (ATUS Level 3 Task Name: Weightlifting or strength training)
+* Lifting at the Gym *(ATUS Level 3 Task Name: Weightlifting or strength training)*
 
-* Scuba Diving (ATUS Level 3 Task Name: Participating in water sports)
+* Scuba Diving *(ATUS Level 3 Task Name: Participating in water sports)*
 
-***Note:** Analysis includes those who reported 0 time spent on these activities so we can see prevalance in the general population*
+***Note:** Analysis in first table includes those who reported 0 time spent on these activities so we can see prevalence in the general population*
 
 ```{r favorite-activities-by-age-group-one-table}
 
@@ -699,7 +689,7 @@ household_by_age <- activities |>
 household_act_by_age_table <- household_by_age |>
   ggplot(aes(x = age, y = avg_min)) +
   geom_line() +
-  geom_smooth(method = "loess", formula = y ~ x) +
+  geom_smooth(method = "loess", formula = y ~ x, se = FALSE) +
   scale_x_continuous(breaks = seq(0, 90, by = 10)) +
   labs(
     title = "Time Spent on Household Activities by Age",
@@ -712,44 +702,11 @@ household_act_by_age_table <- household_by_age |>
 
 household_act_by_age_table
 
-
-# household_by_age <- activities |>
-#     filter(level1_code == "020000") |>
-#     right_join(
-#         respondents |> select(participant_id, survey_weight),
-#         join_by(participant_id)
-#     ) |>
-#     mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
-#     left_join(
-#         roster |>
-#             filter(relation == "Self") |>
-#             select(participant_id, age),
-#         join_by(participant_id)
-#     ) |>
-#     mutate(age_group = cut(age, breaks = c(0, 24, 34, 44, 54, 64, Inf),
-#                            labels = c("Under 25", "25-34", "35-44",
-#                                       "45-54", "55-64", "65 and over"))) |>
-#     filter(!is.na(age_group)) |>
-#     group_by(age_group) |>
-#     summarise(avg_min = weighted.mean(time_spent_min, survey_weight, na.rm = TRUE))
-# 
-# household_by_age |>
-#     ggplot(aes(x = age_group, y = avg_min)) +
-#     geom_col() +
-#     labs(
-#         title = "Time Spent on Household Activities by Age Group",
-#         x = "Age Group",
-#         y = "Average Minutes per Day",
-#         caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
-#     ) +
-#     theme_minimal() +
-#     theme(plot.title = element_text(hjust = 0.5))
-
 ```
 
-**2. A major perk of working in education is the freedom to spend summers how you wish. What are the most popular activities for Americans employed in education during the summer months (June, July, and August)?**
+Generally, the amount of time spent on household activities increases as Americans age starting with ~33 minutes per day on average at 20 years old and peaking at 65-70 years old with ~44 minutes per day. After this point, time spent on household activities seems to decline again. 
 
-***Note:** Most popular measured by most frequently reported activity.*
+**2. A major perk of working in education is the freedom to spend summers how you wish. What are the most popular activities for Americans employed in education during the summer months (June, July, and August)?**
 
 ```{r education-employees-summer-activities}
 
@@ -788,6 +745,7 @@ education_summer_activities_table
 
 ```
 
+The top three most popular activities during the summer months for American employed in education are sleeping, eating/drinking, and washing/dressing/grooming oneself. Most  popular is measured by most frequently reported activity.
 
 **3. It is often remarked that “education is a privilege wasted on the young”. Among respondents who report being enrolled in a higher-education program, how does the amount of time allocated to various educational activities (attending class, doing homework, studying, etc.) vary by age? Does it seem to be true that older students dedicate more time to their education?**
 
@@ -809,23 +767,12 @@ education_time_by_age <- activities |>
     group_by(age_group) |>
     summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
     arrange(age_group)
-# education_time_by_age <- activities |>
-#   filter(level1_code == "060000") |>
-#   right_join(
-#     respondents |>
-#       filter(college_enrolled) |>
-#       select(participant_id, survey_weight, age),
-#     join_by(participant_id)
-#   ) |>
-#   mutate(time_spent_min = coalesce(time_spent_min, 0L)) |>
-#   group_by(age) |>
-#   summarise(avg_min = weighted.mean(time_spent_min, survey_weight)) |>
-#   arrange(age)
 
 education_time_by_age_table <- education_time_by_age |>
     ggplot(aes(x = age_group, y = avg_min, fill = age_group)) +
     geom_col() +
     scale_fill_brewer(palette = "Set2") +
+    scale_y_continuous(breaks = seq(0, max(education_time_by_age$avg_min), by = 10)) +
     labs(
         title = "Time Spent on Educational Activities by Age Group",
         subtitle = "Among respondents enrolled in higher education",
@@ -841,7 +788,7 @@ education_time_by_age_table
 
 ```
 
-Among respondents who report being enrolled in a higher education program, students who are younger on average spend more time on educational activities than older students. Students under 25 report the highest average time spent on educational activities, followed by students 25-34. Students between 35-44 report the lowest average time spent on educational activities. 
+Among respondents enrolled in a higher education program, students who are younger on average spend more time on educational activities than older students. Students under 25 report the highest average time spent on educational activities with ~87 minutes per day on average, followed by students 25-34. Students between 35-44 report the lowest average time spent at ~78 minutes. 
 
 **4. A “bump plot” is an effective way to display ranking (ordinal) data and to show how it changes over time. Use a bump plot to show how the relative interest in different sports changes as a function of either age or income (your choice).**
 
@@ -891,7 +838,7 @@ sports_by_income_table
 
 ```
 
-I defined relative interest in the sports based on reported *participation* in sports across income groups. Rank is determined by the number of recorded activities respondents of each income group participated in and the top 10 sports are displayed. 
+**Note:** I defined relative interest in the sports based on reported *participation* in sports across income groups. Rank is determined by the number of recorded activities respondents participated in and the top 10 sports are displayed.
 
 As income rises, interest in water sports and other playing sports steadily increases. With respondents earning under \$25k, watersports' rank starts out at 3 and doubles to 6 for those earning \$75k or more. Interest in other playing sports starts relatively high at 7 for those earning under \$25k and moderately rises to 9 at the highest income groups.
 
@@ -940,11 +887,10 @@ childcare_by_family_size_table
 
 ```
 
+The amount of time parents spend per child steadily decreases from 45 minutes when parents have one child to 6 minutes when there are 9 children. After 9 children, time spent per child increases slightly to 15 minutes until they reach child 12, where there is a sharp decline down to almost 0 minutes. 
 
 
 ## Market Research on Time Use Patterns in Target Demographics
-
-Code related to the final deliverable of the assignment goes here. 
 
 ``` {r market-research-on-demos}
 
@@ -956,7 +902,6 @@ activities_labeled <- activities |>
     )
 
 # Identify demographic groups
-
 stay_at_home_dads <- respondents |>
     filter(sex == "M",
            labor_force_status == "Not in labor force",
@@ -972,11 +917,11 @@ college_undergraduates <- respondents |>
 working_mothers <- respondents |>
     filter(sex == "F",
            labor_force_status %in% c("Employed - at work", "Employed - absent"),
-           n_children_under18 > 0)
+           n_children_under18 > 0,
+           age < 65)
 
 
-
-# Define target levels for each demographic group
+# Define target levels for time spent of key activities of each demographic group
 sahd_targets <- tribble(
     ~task_level2,                                       ~target,
     "Sleeping",                                         480,
@@ -991,9 +936,10 @@ sahd_targets <- tribble(
 undergrad_targets <- tribble(
     ~task_level2,                                       ~target,
     "Sleeping",                                         360,
-    "Taking Class",                                     300,
-    "Research or Homework",                             300,
-    "Participating in Sports, Exercise, or Recreation", 60,
+    "Taking Class",                                     240,
+    "Research or Homework",                             240,
+    "Extracurricular School Activities (except sports)", 90,
+    "Participating in Sports, Exercise, or Recreation", 90,
     "Socializing and Communicating",                    120,
     "Relaxing and Leisure",                             120
 )
@@ -1001,13 +947,13 @@ undergrad_targets <- tribble(
 working_mothers_targets <- tribble(
     ~task_level2,                                                ~target,
     "Sleeping",                                                  480,
-    "Working",                                                   480,
+    "Working",                                                   420,
     "Caring for and Helping Household Children",                 120,
     "Household Activities",                                      60,
-    "Participating in Sports, Exercise, or Recreation",          45,
+    "Participating in Sports, Exercise, or Recreation",          90,
     "Socializing and Communicating",                             30,
     "Relaxing and Leisure",                                      90,
-    "Health-Related Self Care",                                  30
+    "Health-Related Self Care",                                  90
 )
 
 # Function to calculate typical levels and fraction hitting target
@@ -1017,6 +963,7 @@ calc_typical <- function(demographic, activity_filter, targets) {
         left_join(activities_labeled, join_by(participant_id)) |>
         filter({{ activity_filter }}) |>
         mutate(time_spent_min = coalesce(time_spent_min, 0L),
+          #if come across level1_code, will collapse all corresponding level2 tasks into one row
                task_level2 = if_else(level1_code == "020000", task_level1, task_level2)) |>
         filter(!is.na(task_level2)) |>
         group_by(participant_id, survey_weight, task_level1, task_level2) |>
@@ -1055,8 +1002,7 @@ sahd_results <- calc_typical(
 
 undergrad_results <- calc_typical(
     college_undergraduates,
-    level1_code == "060000" |
-        level2_code %in% c("120100", "120300", "130100") |
+        level2_code %in% c("060100", "060200", "060300", "120100", "120300", "130100") |
         level3_code == "010101",
     undergrad_targets
 )
@@ -1069,10 +1015,13 @@ working_mothers_results <- calc_typical(
     working_mothers_targets
 )
 
-##CHART - fraction of resp hitting target levels
+
+###CHARTS FOR FINAL DELIVERABLE 
+###
+##CHART - fraction of respondents hitting target levels for each key activity
 #Stay at home dads hitting target levels
 
-sahd_plot <- sahd_results$target_hit |>
+sahd_hitting_target_plot <- sahd_results$target_hit |>
     mutate(pct_hitting_target = pct_hitting_target * 100) |>
     ggplot(aes(x = reorder(task_level2, pct_hitting_target), y = pct_hitting_target)) +
     geom_col(fill = "steelblue") +
@@ -1086,7 +1035,8 @@ sahd_plot <- sahd_results$target_hit |>
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
 
-undergrad_plot <- undergrad_results$target_hit |>
+#Undergrads hitting target levels
+undergrad_hitting_target_plot <- undergrad_results$target_hit |>
     mutate(pct_hitting_target = pct_hitting_target * 100) |>
     ggplot(aes(x = reorder(task_level2, pct_hitting_target), y = pct_hitting_target)) +
     geom_col(fill = "darkgreen") +
@@ -1100,7 +1050,8 @@ undergrad_plot <- undergrad_results$target_hit |>
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
 
-working_mothers_plot <- working_mothers_results$target_hit |>
+#working mothers hitting target demos
+working_mothers_hitting_target_plot <- working_mothers_results$target_hit |>
     mutate(pct_hitting_target = pct_hitting_target * 100) |>
     ggplot(aes(x = reorder(task_level2, pct_hitting_target), y = pct_hitting_target)) +
     geom_col(fill = "purple") +
@@ -1114,49 +1065,134 @@ working_mothers_plot <- working_mothers_results$target_hit |>
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
 
-sahd_plot
 
-undergrad_plot
+##CHART - Average time spent on common activities across demographics 
+##
+#Find common activities across the three demographics
+common_activities_across_demos <- bind_rows(
+    sahd_results$typical |> mutate(demographic = "Stay-at-Home Dads"),
+    undergrad_results$typical |> mutate(demographic = "College Undergraduates"),
+    working_mothers_results$typical |> mutate(demographic = "Working Mothers")
+) |>
+    filter(task_level2 %in% c("Sleeping", "Socializing and Communicating", 
+                               "Relaxing and Leisure",
+                               "Participating in Sports, Exercise, or Recreation")) |>
+    ggplot(aes(x = task_level2, y = avg, fill = demographic)) +
+    geom_col(position = "dodge") +
+    coord_flip() +
+    scale_fill_brewer(palette = "Set2") +
+    labs(
+        title = "Average Time Spent on Common Activities Between Demographic Groups",
+        x = "Activity",
+        y = "Average Minutes per Day",
+        fill = "Demographic",
+        caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+    ) +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5))
 
-working_mothers_plot
 
-
+##CHART - Typical Time Use across demos
+##
+make_typical_table <- function(results, title) {
+    results$typical |>
+        select(-task_level1) |>
+        gt() |>
+        cols_label(
+          task_level2 = md("**Activity**"),
+          low = md("**Low**<br>(25th %ile)"),
+          medium = md("**Medium**<br>(50th %ile)"),
+          high = md("**High**<br>(75th %ile)"),
+          avg = md("**Average**"),
+          target = md("**Target**")
+        ) |>
+        cols_width(task_level2 ~ px(150)) |>
+        fmt_number(columns = c(low, medium, high, avg, target), decimals = 0) |>
+        cols_align(align = "center", columns = c(low, medium, high, avg, target)) |>
+        #if target is greater than average it indicates an opportunity for users to push themselves
+        tab_style(
+          style = cell_text(color = "darkgreen"),
+          locations = cells_body(
+            columns = target,
+            rows = target >= avg
+          )
+        ) |>
+      #if target is less than average, it indicates an easy "win" for users
+        tab_style(
+          style = cell_text(color = "darkred"),
+          locations = cells_body(
+            columns = target, 
+            rows = target <= avg
+          )
+        ) |>
+        tab_header(
+            title = md(glue("**{title}**")),
+            subtitle = "Minutes per day"
+        ) |>
+        tab_source_note(
+            source_note = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+        )
+}
 
 
 ```
 
 
+What have you been up to? A common question among friends, coworkers, and acquaintances that give us just a little bit of insight into who we are. Luckily, the Bureau of Labor Statistics and US Census Bureau has taken some of the mystery out of this guessing game with its *[American Time Use Survey (ATUS)](https://www.bls.gov/tus/data/datafiles-0324.htm)*. With this treasure trove of time usage data from the past 20 years, we're able to dig into our key demographic of users and their daily habits so that we can answer the core questions of our user research: *Who are they?*, *What do they do?*, and *Are we engaging and realistic in our time goals for users?*.
 
+### Who Are They?
+Our core demographic thus far is made up of Stay at Home Dads, College Undergraduates and Working Mothers all with good reason to need a helping hand when it comes to making their time allocation work for their unique needs. 
 
-College undergraduates are defined as respondents that are enrolled in college and between the ages 18-22 so your traditional "typical" undergraduate student.
+We broke down and defined these three groups as follows: 
 
-Key Activities: 
-Stay At Home Dads
+* **Stay at Home Dads** are males with one or more children who reported their labor force status as 'Not in the Labor Force' and who are not of retirement age (below 65) or retirement status. 
 
-* Sleep (Target level: 480 mins - 8 hours)
-* Caring for and Helping Household Children (Target: 360 min - 6 hours)
-* Household activities (Target: 2 hours)
-* Exercise/Sports (participating) (Target - 1 hour)
-* Socializing (Target: 1 hour)
-* Relaxing and Leisure
+* **College undergraduates** are individuals of all genders enrolled in college and between the ages 18-22. This captures the traditional "typical" first time undergraduate student not far removed from high school and still figuring out how to manage their time wisely.
 
-College Undergraduates
+* **Working Mothers** are women with one or more children who reported a labor force status of 'Employed' and were not retirement age (below 65).
 
-* Educational activities (480 mins - 5 hours)
-* Sleep (not really a priority but 8)
-* Exercise/Sports (Target: 1 hour)
-* Socializing (Target: 120 mins - 2 hours)
-* Leisure/relaxing (Target: 60 mins - 1 hour)
+### What Do They Do?
 
-Working Mothers
+For each of these groups, we've identified key activities that take up a significant amount of time in these users' days and that users would like to improve upon like hitting the gym for longer. To gauge how useful our application may be to these individuals, we analyzed how each of these groups have historically spent time on these activities on average and how they measure up to what we believe would be desired target times for these groups. 
 
-* Childcare (Target: 2 hours)
-* Work 
-* Exercise/sports (Target 45 mins)
-* Sleep (Target: 480 min - 8 hours)
-* Self-care (health related self care 10301 and other self care 10399)
-* Household activities (Target: 1 hour)
-* Socializing (Target: 30 mins)
+Among these groups, we see that our app may be most useful for working mothers since we've identified more key activities and responsibilities in general for this group. When comparing working mothers' typical time usage against our key activity targets, we also identified the most opportunities for time improvement in activities such as caring for household children, health-related self care, and participating in sports/exercise. 
+
+```{r typical-time-use-tables, echo = FALSE}
+
+make_typical_table(sahd_results, "Typical Time Use for Stay-at-Home Dads")
+
+make_typical_table(undergrad_results, "Typical Time Use for College Undergraduates")
+
+make_typical_table(working_mothers_results, "Typical Time Use for Working Mothers")
+
+```
+
+### Are We Engaging and Realistic in Our Time Goals?
+
+Our target time levels are designed to be close enough that users won't get discouraged by difficulty but far enough to ignite the fire of competition among their peers. When measuring up the fraction of users in each group who can hit their respective target time goals, we see that users in each group can easily achieve half or more of the intended time goals with two or three outstanding goals in each group. It's our hope that this balance will keep the completionists among us engaged and the more casual users more than happy with their outcomes. 
+
+Undergraduates are the group with the least amount of activities where more than 50% of users can hit target levels, which may indicate difficulty keeping up with taking classes, doing homework and socializing. 
+
+```{r hitting-target-levels-charts, echo=FALSE}
+
+sahd_hitting_target_plot
+undergrad_hitting_target_plot
+working_mothers_hitting_target_plot
+
+```
+
+Among activities that are shared across all demographic groups, working mothers spend on average less time on all activities while stay at home dads seem to have the luxury of time at hand. These two groups may seem somewhat similar at the outset with many overlapping activities but we see that working moms aren't able to hit targets in `participate in sports/exercise` and `care for household children` even though their target thresholds are significantly lower than stay at home dads. Moreover, undergraduate students only slightly led in time spent socializing category and for the most part played second fiddle to stay at home dads, which makes sense since none of a student's main priorities (going to class or studying) are present here.  
+
+```{r common-activities-across-demos, echo=FALSE}
+
+common_activities_across_demos
+
+```
+
+These disparities highlight and suggest segmentation in prioritization of activities among these groups. Our approach is correct in using dynamic thresholds for target levels since each major group's needs are clearly different. Working moms may need to do more with less time so they need lower targets in certain activities to hit target levels and get a sense of accomplishment out of our application. Stay at home dads are able to handle higher thresholds due to them having more time in the day not being taken up by work. Undergraduate students want to work hard in school and are not very concerned with housework.
+
+Overall, our target demographics are well defined as a great starting point for application launch. Time usage analysis across these groups indicates we will have a varied audience of users with differing priorities that will require dynamic tiers of target thresholds in order to keep these group engaged, happy and challenged. 
+
 
 
 ::: {.callout-note title="AI Usage Statement" collapse="true"}
