@@ -35,6 +35,8 @@ library(skimr)
 library(dplyr)
 library(scales)
 library(gt)
+library(Hmisc)
+library(patchwork)
 
 load_atus_data <- function(file_base = c("resp", "rost", "act", "cps")){
     if(!dir.exists(file.path("data", "mp02"))){
@@ -96,7 +98,7 @@ load_atus_data <- function(file_base = c("resp", "rost", "act", "cps")){
                   left_join(
                     load_atus_data("rost") |>
                       filter(relation == "Self") |>
-                      select(participant_id, age), 
+                      select(participant_id, age, sex), 
                     join_by(TUCASEID == participant_id)
                   ) |>
                   left_join(
@@ -845,49 +847,61 @@ Among respondents who report being enrolled in a higher education program, stude
 
 ```{r sports-by-income}
 
-# sports_by_income <- activities |>
-#     #filter by participation in sports
-#     filter(level2_code == "130100") |>
-#     inner_join(
-#         respondents |>
-#             filter(weekly_earnings > 0) |>
-#             select(participant_id, survey_weight, weekly_earnings),
-#         join_by(participant_id)
-#     ) |>
-#     inner_join(
-#         activity_codes |> select(code_level3, task_level3) |> distinct(),
-#         join_by(level3_code == code_level3)
-#     ) |>
-#     mutate(income_group = cut((weekly_earnings / 100) * 52,
-#                               breaks = c(0, 25000, 50000, 75000, 100000, Inf),
-#                               labels = c("Under $25k", "$25k-$50k", "$50k-$75k", "$75k-$100k", "Over $100k"))) |>
-#     filter(!is.na(income_group)) |>
-#     group_by(income_group, task_level3) |>
-#     summarise(n_occurrences = n(), .groups = "drop") |>
-#     group_by(income_group) |>
-#     mutate(rank = rank(-n_occurrences)) |>
-#     filter(rank <= 10)
-# 
-# sports_by_income_table <- sports_by_income |>
-#     ggplot(aes(x = income_group, y = rank, color = task_level3, group = task_level3)) +
-#     geom_bump() +
-#     geom_point(size = 3) +
-#     scale_y_reverse() +
-#     labs(
-#         title = "Relative Interest in Sports by Income Group",
-#         x = "Income Group",
-#         y = "Rank",
-#         color = "Sport",
-#         caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
-#     ) +
-#     theme_minimal() +
-#     theme(plot.title = element_text(hjust = 0.5))
-# 
-# sports_by_income_table
+sports_by_income <- activities |>
+    #filter by participation in sports
+    filter(level2_code == "130100") |>
+    inner_join(
+        respondents |>
+            filter(weekly_earnings > 0) |>
+            select(participant_id, survey_weight, weekly_earnings),
+        join_by(participant_id)
+    ) |>
+    inner_join(
+        activity_codes |> select(code_level3, task_level3) |> distinct(),
+        join_by(level3_code == code_level3)
+    ) |>
+    mutate(income_group = cut((weekly_earnings / 100) * 52,
+                              breaks = c(0, 25000, 50000, 75000, 100000, Inf),
+                              labels = c("Under $25k", "$25k-$50k", "$50k-$75k", "$75k-$100k", "Over $100k"))) |>
+    filter(!is.na(income_group)) |>
+    group_by(income_group, task_level3) |>
+    summarise(n_occurrences = n(), .groups = "drop") |>
+    group_by(income_group) |>
+    #create a rank of each sport within each income group based on # of participation activity occurrence among respondent
+    mutate(rank = rank(-n_occurrences)) |>
+    #show sports with rank 10 or below (top 10 sports in each income group)
+    filter(rank <= 10)
+
+sports_by_income_table <- sports_by_income |>
+    ggplot(aes(x = income_group, y = rank, color = task_level3, group = task_level3)) +
+    geom_line() +
+    geom_point(size = 3) +
+    scale_y_reverse(breaks = seq(1, 10, by = 1)) +
+    labs(
+        title = "Relative Interest in Sports by Income Group",
+        x = "Income Group",
+        y = "Sport Rank",
+        color = "Sport",
+        caption = "Source: American Time Use Survey (ATUS), 2003-2024, U.S. Bureau of Labor Statistics"
+    ) +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+sports_by_income_table
 
 ```
 
+I defined relative interest in the sports based on reported *participation* in sports across income groups. Rank is determined by the number of recorded activities respondents of each income group participated in and the top 10 sports are displayed. 
 
+As income rises, interest in water sports and other playing sports steadily increases. With respondents earning under \$25k, watersports' rank starts out at 3 and doubles to 6 for those earning \$75k or more. Interest in other playing sports starts relatively high at 7 for those earning under \$25k and moderately rises to 9 at the highest income groups.
+
+The sharpest declines as income grows are in running and biking, with both sports' ranks declining by 2 for respondents earning 50k and more.
+
+Other trends of note: 
+
+* Golfing is of no interest below \$50k and only becomes a sport of interest for higher earners at \$50-75k and higher. 
+
+* Basketball has a relatively high ranking at 8 but only appears in the Under 25k group.
 
 **5. How does the amount of time parents spend per child change as family size increases?**
 
@@ -932,10 +946,222 @@ childcare_by_family_size_table
 
 Code related to the final deliverable of the assignment goes here. 
 
+``` {r market-research-on-demos}
+
+#add activity labels to activities data frame
+activities_labeled <- activities |>
+    left_join(
+        activity_codes |> select(code_level3, task_level1, task_level2, task_level3) |> distinct(),
+        join_by(level3_code == code_level3)
+    )
+
+# Identify demographic groups
+
+stay_at_home_dads <- respondents |>
+    filter(sex == "M",
+           labor_force_status == "Not in labor force",
+           !is_retired,
+           n_children_under18 > 0,
+           age < 65)
+
+college_undergraduates <- respondents |>
+    filter(college_enrolled,
+           age >= 18,
+           age <= 22)
+
+working_mothers <- respondents |>
+    filter(sex == "F",
+           labor_force_status %in% c("Employed - at work", "Employed - absent"),
+           n_children_under18 > 0)
+
+
+
+# Define target levels for each demographic group
+sahd_targets <- tribble(
+    ~task_level2,                                       ~target,
+    "Sleeping",                                         480,
+    "Caring for and Helping Household Children",        300,
+    "Activities Related to Household Children's Education", 60,
+    "Household Activities",                             120,
+    "Participating in Sports, Exercise, or Recreation", 60,
+    "Socializing and Communicating",                    60,
+    "Relaxing and Leisure",                             60
+)
+
+undergrad_targets <- tribble(
+    ~task_level2,                                       ~target,
+    "Sleeping",                                         360,
+    "Taking Class",                                     300,
+    "Research or Homework",                             300,
+    "Participating in Sports, Exercise, or Recreation", 60,
+    "Socializing and Communicating",                    120,
+    "Relaxing and Leisure",                             120
+)
+
+working_mothers_targets <- tribble(
+    ~task_level2,                                                ~target,
+    "Sleeping",                                                  480,
+    "Working",                                                   480,
+    "Caring for and Helping Household Children",                 120,
+    "Household Activities",                                      60,
+    "Participating in Sports, Exercise, or Recreation",          45,
+    "Socializing and Communicating",                             30,
+    "Relaxing and Leisure",                                      90,
+    "Health-Related Self Care",                                  30
+)
+
+# Function to calculate typical levels and fraction hitting target
+calc_typical <- function(demographic, activity_filter, targets) {
+    activities_filtered <- demographic |>
+        select(participant_id, survey_weight) |>
+        left_join(activities_labeled, join_by(participant_id)) |>
+        filter({{ activity_filter }}) |>
+        mutate(time_spent_min = coalesce(time_spent_min, 0L),
+               task_level2 = if_else(level1_code == "020000", task_level1, task_level2)) |>
+        filter(!is.na(task_level2)) |>
+        group_by(participant_id, survey_weight, task_level1, task_level2) |>
+        summarise(total_min = sum(time_spent_min), .groups = "drop")
+    
+    typical <- activities_filtered |>
+        group_by(task_level1, task_level2) |>
+        summarise(
+            low    = wtd.quantile(total_min, weights = survey_weight, probs = 0.25),
+            medium = wtd.quantile(total_min, weights = survey_weight, probs = 0.50),
+            high   = wtd.quantile(total_min, weights = survey_weight, probs = 0.75),
+            avg    = weighted.mean(total_min, survey_weight),
+            .groups = "drop"
+        ) |>
+        left_join(targets, join_by(task_level2))
+    
+    target_hit <- activities_filtered |>
+        left_join(targets, join_by(task_level2)) |>
+        filter(!is.na(target)) |>
+        mutate(hits_target = total_min >= target) |>
+        group_by(task_level1, task_level2, target) |>
+        summarise(pct_hitting_target = weighted.mean(hits_target, survey_weight),
+                  .groups = "drop")
+    
+    list(typical = typical, target_hit = target_hit)
+}
+
+# Calculate typical levels and fraction hitting target for each demographic group
+sahd_results <- calc_typical(
+    stay_at_home_dads,
+    level1_code == "020000" |
+        level2_code %in% c("030100", "030200", "120100", "120300", "130100") |
+        level3_code == "010101",
+    sahd_targets
+)
+
+undergrad_results <- calc_typical(
+    college_undergraduates,
+    level1_code == "060000" |
+        level2_code %in% c("120100", "120300", "130100") |
+        level3_code == "010101",
+    undergrad_targets
+)
+
+working_mothers_results <- calc_typical(
+    working_mothers,
+    level1_code == "020000" |
+        level2_code %in% c("030100", "050100", "120100", "120300", "130100", "010300") |
+        level3_code == "010101",
+    working_mothers_targets
+)
+
+##CHART - fraction of resp hitting target levels
+#Stay at home dads hitting target levels
+
+sahd_plot <- sahd_results$target_hit |>
+    mutate(pct_hitting_target = pct_hitting_target * 100) |>
+    ggplot(aes(x = reorder(task_level2, pct_hitting_target), y = pct_hitting_target)) +
+    geom_col(fill = "steelblue") +
+    geom_hline(yintercept = 50, linetype = "dashed", color = "red") +
+    coord_flip() +
+    labs(
+        title = "Stay-at-Home Dads",
+        x = "Activity",
+        y = "% Hitting Target",
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+undergrad_plot <- undergrad_results$target_hit |>
+    mutate(pct_hitting_target = pct_hitting_target * 100) |>
+    ggplot(aes(x = reorder(task_level2, pct_hitting_target), y = pct_hitting_target)) +
+    geom_col(fill = "darkgreen") +
+    geom_hline(yintercept = 50, linetype = "dashed", color = "red") +
+    coord_flip() +
+    labs(
+        title = "College Undergraduates",
+        x = "Activity",
+        y = "% Hitting Target",
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+working_mothers_plot <- working_mothers_results$target_hit |>
+    mutate(pct_hitting_target = pct_hitting_target * 100) |>
+    ggplot(aes(x = reorder(task_level2, pct_hitting_target), y = pct_hitting_target)) +
+    geom_col(fill = "purple") +
+    geom_hline(yintercept = 50, linetype = "dashed", color = "red") +
+    coord_flip() +
+    labs(
+        title = "Working Mothers",
+        x = "Activity",
+        y = "% Hitting Target",
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+sahd_plot
+
+undergrad_plot
+
+working_mothers_plot
+
+
+
+
+```
+
+
+
+
+College undergraduates are defined as respondents that are enrolled in college and between the ages 18-22 so your traditional "typical" undergraduate student.
+
+Key Activities: 
+Stay At Home Dads
+
+* Sleep (Target level: 480 mins - 8 hours)
+* Caring for and Helping Household Children (Target: 360 min - 6 hours)
+* Household activities (Target: 2 hours)
+* Exercise/Sports (participating) (Target - 1 hour)
+* Socializing (Target: 1 hour)
+* Relaxing and Leisure
+
+College Undergraduates
+
+* Educational activities (480 mins - 5 hours)
+* Sleep (not really a priority but 8)
+* Exercise/Sports (Target: 1 hour)
+* Socializing (Target: 120 mins - 2 hours)
+* Leisure/relaxing (Target: 60 mins - 1 hour)
+
+Working Mothers
+
+* Childcare (Target: 2 hours)
+* Work 
+* Exercise/sports (Target 45 mins)
+* Sleep (Target: 480 min - 8 hours)
+* Self-care (health related self care 10301 and other self care 10399)
+* Household activities (Target: 1 hour)
+* Socializing (Target: 30 mins)
+
 
 ::: {.callout-note title="AI Usage Statement" collapse="true"}
 
-Claude was used to help write the code in this project, but all non-code text was generated without the use of any Generative AI tools.  
+Claude was used to help write the code in this project and brainstorm key demographic activities, but all non-code text was generated without the use of any Generative AI tools.  
 
 :::
 
