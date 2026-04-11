@@ -1191,7 +1191,7 @@ common_activities_across_demos
 
 These disparities highlight and suggest segmentation in prioritization of activities among these groups. Our approach is correct in using dynamic thresholds for target levels since each major group's needs are clearly different. Working moms may need to do more with less time so they need lower targets in certain activities to hit target levels and get a sense of accomplishment out of our application. Stay at home dads are able to handle higher thresholds due to them having more time in the day not being taken up by work. Undergraduate students want to work hard in school and are not very concerned with housework.
 
-Overall, our target demographics are well defined as a great starting point for application launch. Time usage analysis across these groups indicates we will have a varied audience of users with differing priorities that will require dynamic tiers of target thresholds in order to keep these group engaged, happy and challenged. 
+Overall, our target demographics are well defined as a great starting point for application launch. Time usage analysis across these groups indicates we will have a varied audience of users with differing priorities that will require dynamic tiers of target thresholds in order to keep these groups engaged, happy and challenged. 
 
 
 
