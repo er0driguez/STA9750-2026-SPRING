@@ -1,0 +1,78 @@
+---
+title: "Mini-Project 03 - Who Goes There? US Internal Migration and Implications for Congressional Reapportionment"
+author: "Evelyn Rodriguez"
+editor:
+    mode: source
+format:
+    html:
+        toc: true
+        code-fold: true
+        code-summary: "Display Code"
+        code-overflow: wrap
+        code-block-bg: true
+        code-block-border-left: "#6610f2"
+        highlight-style: "a11y"
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(glue)
+library(readxl)
+library(httr2)
+library(skimr)
+library(dplyr)
+library(scales)
+library(gt)
+
+```
+
+## Introduction
+
+A suitable introduction goes here. In this mini-project, I intend to demonstrate
+my skills at Data Import/API Usage/File Parsing in an analysis of Census Data/Migration Flows data.
+
+## Data Acquisition and Preparation
+
+Code related to Data Acquisition and Preparation goes here.
+
+Remember that code blocks look like this: 
+
+```{r}
+# Your code goes in chunks like this
+library(tidyverse) # You will want this line for almost all MPs
+x <- 1 + 2 + 3
+```
+
+and you can then print variables from chunks: 
+
+```{r}
+x
+```
+
+or inline, like this: $x$ is `r x`.
+
+## Exploratory Analysis
+
+Code related to Exploratory Data Analysis goes here. This may include
+exploratory graphics, instructor-provided exploratory questions, or other
+similar elements. 
+
+## Final Insights and Deliverable
+
+Code related to the final deliverable of the assignment goes here. 
+
+
+::: {.callout-note title="AI Usage Statement" collapse="true"}
+
+Claude was used to help write the code in this project and brainstorm final deliverable ideas, but all non-code text was generated without the use of any Generative AI tools.
+
+:::
+
+------------------------------------------------------------------------
+
+This work ©2025 by er0driguez was initially prepared as a Mini-Project for
+STA 9750 at Baruch College. More details about this course can be found at
+[the course site](https://michael-weylandt.com/STA9750) and instructions for
+this assignment can be found at 
+[MP #03](https://michael-weylandt.com/STA9750/mini/mini03.html)
