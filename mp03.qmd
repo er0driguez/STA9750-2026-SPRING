@@ -24,10 +24,15 @@ library(skimr)
 library(dplyr)
 library(scales)
 library(gt)
+library(tidycensus)
 
 ```
 
 ## Introduction
+
+What will your state look like in 2030? Many inquiring politicos are hard at work figuring this out and in this mini-project, we will examine [migration flows](https://www.census.gov/topics/population/migration/guidance/migration-flows.html) within the US to forecast the size of state congressional delegations for the 2032 midterm elections. 
+
+paint a better picture of what this could possible look like. Using state-level and metro-level data from the US Census Bureau's [American Community Survey (ACS)](https://en.wikipedia.org/wiki/American_Community_Survey), I'll create demographic projections to predict state populations in 2030.
 
 A suitable introduction goes here. In this mini-project, I intend to demonstrate
 my skills at Data Import/API Usage/File Parsing in an analysis of Census Data/Migration Flows data.
@@ -35,6 +40,95 @@ my skills at Data Import/API Usage/File Parsing in an analysis of Census Data/Mi
 ## Data Acquisition and Preparation
 
 Code related to Data Acquisition and Preparation goes here.
+
+### Task 1
+
+Acquire data from the `tidycensus` package in R to find total population by state from 2015 - 2024.
+Note: We need to skip data for 2020 since regular 1-year ACS for 2020 was not released and is not available in `tidycensus`. 
+
+```{r acs-data-acquisition}
+#| warning: false 
+
+## TASK 1 - STATE POPULATION AND BIRTH INFORMATION
+
+acquire_acs_population <- function() {
+# Define and create project cache directory if it doesn't already exist
+  data_dir <- file.path("data", "mp03")
+  
+  if (!dir.exists(file.path("data", "mp03"))) {
+    dir.create(file.path("data", "mp03"), showWarnings = FALSE, recursive = TRUE)
+  }
+
+#Exclude 2020 - standard ACS-1 data not released due to COVID  
+  acs_years <- c(2015:2019, 2021:2024)
+
+#Iterate over each year, loading from cache or download as needed    
+  POP_ALL <- map(acs_years, function(yy) {
+    cache_file <- file.path(data_dir, glue("state_population_{yy}.csv"))
+
+#return cached file if it exists, otherwise download and cache    
+    if (file.exists(cache_file)) {
+      message(glue("Loading cached population data for {yy}"))
+      return(read_csv(cache_file, show_col_types = FALSE))
+    }
+    
+    message(glue("Downloading ACS-1 population data for {yy}"))
+    
+    state_pop_raw <- get_acs(
+  # B01003_001 is the ACS variable for total population
+      variables   = "B01003_001",
+      geography   = "state",
+      year        = yy,
+      survey      = "acs1",
+      geometry    = FALSE,
+      cache_table = TRUE
+    ) |>
+      mutate(year = yy) |>
+      select(
+        state      = NAME,
+        population = estimate,
+        year
+      )
+#cache the cleaned result to disk before returning    
+    write_csv(state_pop_raw, cache_file)
+    state_pop_raw
+    
+  }) |> bind_rows()
+  
+  POP_ALL
+}
+
+STATE_POP <- acquire_acs_population()
+
+
+```
+
+Checking if Data is correct for Task #1
+
+```{r initial-data-check, eval=FALSE}
+
+dim(STATE_POP)
+glimpse(STATE_POP)
+head(STATE_POP)
+
+#should be 9 years
+distinct(STATE_POP, year)
+
+#should be 52 states
+STATE_POP |> count(year)
+
+#should be california
+STATE_POP |> group_by(year) |> slice_max(population)
+#should be wyoming
+STATE_POP |> group_by(year) |> slice_min(population)
+#should increase
+STATE_POP |> group_by(year) |> summarize(total_population = sum(population))
+STATE_POP |> filter(state == "California", year == 2023)
+STATE_POP |> summarize(across(everything(), ~sum(is.na(.))))
+STATE_POP |> filter(population < 100000 | population > 50000000)
+```
+
+
 
 Remember that code blocks look like this: 
 
@@ -71,7 +165,7 @@ Claude was used to help write the code in this project and brainstorm final deli
 
 ------------------------------------------------------------------------
 
-This work ©2025 by er0driguez was initially prepared as a Mini-Project for
+This work ©2025 by Evelyn Rodriguez was initially prepared as a Mini-Project for
 STA 9750 at Baruch College. More details about this course can be found at
 [the course site](https://michael-weylandt.com/STA9750) and instructions for
 this assignment can be found at 
