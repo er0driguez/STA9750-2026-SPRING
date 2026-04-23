@@ -17,6 +17,7 @@ format:
 ```{r setup, include=FALSE}
 
 library(tidyverse)
+library(tidycensus)
 library(glue)
 library(readxl)
 library(httr2)
@@ -24,7 +25,6 @@ library(skimr)
 library(dplyr)
 library(scales)
 library(gt)
-library(tidycensus)
 
 ```
 
@@ -49,59 +49,212 @@ Note: We need to skip data for 2020 since regular 1-year ACS for 2020 was not re
 ```{r acs-data-acquisition}
 #| warning: false 
 
-## TASK 1 - STATE POPULATION AND BIRTH INFORMATION
 
-acquire_acs_population <- function() {
-# Define and create project cache directory if it doesn't already exist
-  data_dir <- file.path("data", "mp03")
+acquire_acs_data <- function(dataset = c("population", "state_to_state_migration")) {
   
+  # Validate dataset argument
+  dataset <- match.arg(dataset)
+  
+  # Define and create the project cache directory if it doesn't already exist
+  data_dir <- file.path("data", "mp03")
   if (!dir.exists(file.path("data", "mp03"))) {
     dir.create(file.path("data", "mp03"), showWarnings = FALSE, recursive = TRUE)
   }
-
-#Exclude 2020 - standard ACS-1 data not released due to COVID  
-  acs_years <- c(2015:2019, 2021:2024)
-
-#Iterate over each year, loading from cache or download as needed    
-  POP_ALL <- map(acs_years, function(yy) {
-    cache_file <- file.path(data_dir, glue("state_population_{yy}.csv"))
-
-#return cached file if it exists, otherwise download and cache    
-    if (file.exists(cache_file)) {
-      message(glue("Loading cached population data for {yy}"))
-      return(read_csv(cache_file, show_col_types = FALSE))
-    }
-    
-    message(glue("Downloading ACS-1 population data for {yy}"))
-    
-    state_pop_raw <- get_acs(
-  # B01003_001 is the ACS variable for total population
-      variables   = "B01003_001",
-      geography   = "state",
-      year        = yy,
-      survey      = "acs1",
-      geometry    = FALSE,
-      cache_table = TRUE
-    ) |>
-      mutate(year = yy) |>
-      select(
-        state      = NAME,
-        population = estimate,
-        year
-      )
-#cache the cleaned result to disk before returning    
-    write_csv(state_pop_raw, cache_file)
-    state_pop_raw
-    
-  }) |> bind_rows()
   
-  POP_ALL
+  # Helper to convert state abbreviations to full names
+  # Extends R's built-in state.abb/state.name with DC and Puerto Rico
+  abb_to_name <- c(setNames(state.name, state.abb),
+                   "DC" = "District of Columbia",
+                   "PR" = "Puerto Rico")
+  
+  expand_state_name <- function(x) {
+    ifelse(x %in% names(abb_to_name), abb_to_name[x], x)
+  }
+  
+  switch(dataset,
+    
+    ## TASK 1 - STATE POPULATION AND BIRTH INFORMATION     
+    # --- Population: ACS-1 state-level total population, 2015-2024 (no 2020) ---
+    population = {
+      
+      acs_years <- c(2015:2019, 2021:2024)
+      
+      POP_ALL <- map(acs_years, function(yy) {
+        year_cache_file <- file.path(data_dir, glue("state_population_{yy}.csv"))
+        
+        if (file.exists(year_cache_file)) {
+          message(glue("Loading cached population data for {yy}"))
+          return(read_csv(year_cache_file, show_col_types = FALSE))
+        }
+        
+        message(glue("Downloading ACS-1 state population data for {yy}"))
+        
+        # B01003_001 is the ACS variable for total population
+        state_pop_raw <- get_acs(
+          variables   = "B01003_001",
+          geography   = "state",
+          year        = yy,
+          survey      = "acs1",
+          geometry    = FALSE,
+          cache_table = TRUE
+        ) |>
+          mutate(year = yy) |>
+          select(
+            state      = NAME,
+            population = estimate,
+            year
+          )
+        
+        # Cache the cleaned result to disk before returning
+        write_csv(state_pop_raw, year_cache_file)
+        state_pop_raw
+        
+      }) |> bind_rows()
+      
+      POP_ALL
+    },
+    
+    ##TASK 4: COMBINED STATE TO STATE FLOWS
+    # --- State-to-State Migration: combines 2024 and 2023 ACS-1 flows ---
+    state_to_state_migration = {
+      
+      ##TASK 2: 2024 STATE TO STATE FLOWS
+      # -- Internal function: 2024 flows and stationary population --
+      state_to_state_migration_2024 <- function() {
+        
+        migration_url_2024  <- "https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/2024/state-to-state-migration/State_to_State_Migration_Table_2024_T13.xlsx"
+        migration_file_2024 <- file.path(data_dir, "State_to_State_Migration_Table_2024_T13.xlsx")
+        
+        if (!file.exists(migration_file_2024)) {
+          message("Downloading 2024 state-to-state migration file...")
+          download.file(migration_url_2024, destfile = migration_file_2024, quiet = TRUE, mode = "wb")
+        } else {
+          message("Loading cached 2024 state-to-state migration file...")
+        }
+        
+        # Table sheet: long format, col A = current state, col B = state 1yr ago, col C = estimate
+        # "X" = same-state non-movers (filtered out), "N" = suppressed values (replaced with 0)
+        flows_2024 <- read_excel(
+          migration_file_2024,
+          sheet     = "Table",
+          skip      = 8,
+          col_names = c("state_current", "state_1y", "population", "moe")
+        ) |>
+          select(state_current, state_1y, population) |>
+          filter(!is.na(state_current), population != "X") |>
+          mutate(
+            population    = replace(population, population == "N", "0"),
+            population    = as.integer(population),
+            state_current = expand_state_name(state_current),
+            state_1y      = expand_state_name(state_1y),
+            year_current  = 2024L,
+            year_1y       = 2023L
+          ) |>
+          filter(state_1y != "Foreign country") |>
+          select(state_current, state_1y, population, year_current, year_1y)
+        
+        # Supplemental sheet: stationary population (did not move)
+        # skip = 10 to bypass headers, empty row, and US aggregate row
+        # col A = state name, col B = total population; sheet has 11 columns total
+        stationary_2024 <- read_excel(
+          migration_file_2024,
+          sheet     = "Supplemental - Current Res",
+          skip      = 10,
+          col_names = c("state_current", "population", "moe_1", "est_2", "moe_2",
+                        "est_3", "moe_3", "est_4", "moe_4", "est_5", "moe_5")
+        ) |>
+          select(state_current, population) |>
+          filter(!is.na(state_current), !is.na(population)) |>
+          mutate(
+            population   = as.integer(population),
+            state_1y     = state_current,
+            year_current = 2024L,
+            year_1y      = 2023L
+          ) |>
+          select(state_current, state_1y, population, year_current, year_1y)
+        
+        bind_rows(flows_2024, stationary_2024)
+      }
+      
+      ##TASK 3: 2023 STATE TO STATE MIGRATION
+      # -- Internal function: 2023 flows and stationary population --
+      state_to_state_migration_2023 <- function() {
+        
+        migration_url_2023  <- "https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/2023/state-to-state-migration/State_to_State_Migration_Table_2023_T13.xlsx"
+        migration_file_2023 <- file.path(data_dir, "State_to_State_Migration_Table_2023_T13.xlsx")
+        
+        if (!file.exists(migration_file_2023)) {
+          message("Downloading 2023 state-to-state migration file...")
+          download.file(migration_url_2023, destfile = migration_file_2023, quiet = TRUE, mode = "wb")
+        } else {
+          message("Loading cached 2023 state-to-state migration file...")
+        }
+        
+        # tool_input sheet: hidden sheet, long format, col A = state_1y, col B = state_current
+        # skip = 1 to skip header row; "N/A" = same-state non-movers (filtered out)
+        # "N" = suppressed values (replaced with 0)
+        flows_2023 <- read_excel(
+          migration_file_2023,
+          sheet     = "tool_input",
+          skip      = 1,
+          col_names = c("state_1y", "state_current", "population", "moe",
+                        "blank", "state", "in_est", "in_moe", "out_est", "out_moe",
+                        "blank2", "state_names")
+        ) |>
+          select(state_1y, state_current, population) |>
+          filter(!is.na(state_1y), population != "N/A") |>
+          mutate(
+            population    = replace(population, population == "N", "0"),
+            population    = as.integer(population),
+            # trim whitespace - DC has trailing space in source data
+            state_current = str_trim(state_current),
+            state_1y      = str_trim(state_1y),
+            year_current  = 2023L,
+            year_1y       = 2022L
+          ) |>
+          filter(state_1y != "Foreign country") |>
+          select(state_current, state_1y, population, year_current, year_1y)
+        
+        # Stationary population from Table sheet
+        # range A9:D74 reads only cols A-D starting after 8 header rows
+        # col A = state name, col D = same residence estimate
+        stationary_2023 <- read_excel(
+          migration_file_2023,
+          sheet     = "Table",
+          range     = "A9:D74",
+          col_names = c("state_current", "pop_est", "pop_moe", "population")
+        ) |>
+          select(state_current, population) |>
+          filter(!is.na(state_current), !is.na(population),
+                 !state_current %in% c("United States2", "Current residence in")) |>
+          mutate(
+            population   = as.integer(population),
+            state_1y     = state_current,
+            year_current = 2023L,
+            year_1y      = 2022L
+          ) |>
+          select(state_current, state_1y, population, year_current, year_1y)
+        
+        bind_rows(flows_2023, stationary_2023)
+      }
+      
+      # Combine both years into one tidy data frame
+      bind_rows(state_to_state_migration_2024(), state_to_state_migration_2023())
+    }
+  )
 }
 
-STATE_POP <- acquire_acs_population()
+STATE_POP                <- acquire_acs_data("population")
+STATE_TO_STATE_MIGRATION <- acquire_acs_data("state_to_state_migration")
 
 
 ```
+
+*Note:* My data frame will have more than 5000 rows because I've taken District of Columbia (DC), Puerto Rico and U.S. Island Areas into consideration and not just the 50 mainland(-ish) states. 
+
+Migrants from Puerto Rico have an automatic right to vote and we can represent significant voting blocks in states such as New York, Connecticut and Florida. Same goes for U.S. Island Areas.  
+Excluded migration flows of people from foreign countries since it is not a guarantee that they will be able to vote due to legal status. 
+
 
 Checking if Data is correct for Task #1
 
@@ -119,8 +272,10 @@ STATE_POP |> count(year)
 
 #should be california
 STATE_POP |> group_by(year) |> slice_max(population)
+
 #should be wyoming
 STATE_POP |> group_by(year) |> slice_min(population)
+
 #should increase
 STATE_POP |> group_by(year) |> summarize(total_population = sum(population))
 STATE_POP |> filter(state == "California", year == 2023)
