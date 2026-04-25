@@ -41,10 +41,11 @@ my skills at Data Import/API Usage/File Parsing in an analysis of Census Data/Mi
 
 Code related to Data Acquisition and Preparation goes here.
 
-### Task 1
+### Task 1-4
 
 Acquire data from the `tidycensus` package in R to find total population by state from 2015 - 2024.
-Note: We need to skip data for 2020 since regular 1-year ACS for 2020 was not released and is not available in `tidycensus`. 
+
+Note: Data for 2020 is skipped since regular 1-year ACS for 2020 was not released and is not available in `tidycensus`. 
 
 ```{r acs-data-acquisition}
 #| warning: false 
