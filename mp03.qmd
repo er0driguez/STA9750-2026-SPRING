@@ -25,6 +25,9 @@ library(skimr)
 library(dplyr)
 library(scales)
 library(gt)
+library(jsonlite)
+library(patchwork)
+library(shadowtext)
 
 ```
 
@@ -51,7 +54,7 @@ Note: Data for 2020 is skipped since regular 1-year ACS for 2020 was not release
 #| warning: false 
 
 
-acquire_acs_data <- function(dataset = c("population", "state_to_state_migration")) {
+acquire_acs_data <- function(dataset = c("population", "state_to_state_migration", "metro_to_metro_migration")) {
   
   # Validate dataset argument
   dataset <- match.arg(dataset)
@@ -241,13 +244,69 @@ acquire_acs_data <- function(dataset = c("population", "state_to_state_migration
       
       # Combine both years into one tidy data frame
       bind_rows(state_to_state_migration_2024(), state_to_state_migration_2023())
+    },
+    # --- Metro-to-Metro Migration: ACS-5 2016-2020 metro-level flows ---
+    metro_to_metro_migration = {
+      
+      # API URL for ACS-5 2016-2020 metro-to-metro migration flows
+      # Requests MOVEDIN, MOVEDOUT, FULL1_NAME, FULL2_NAME, GEOID1, GEOID2
+      # for all metropolitan/micropolitan statistical areas
+      metro_migration_url  <- "https://api.census.gov/data/2020/acs/flows?get=MOVEDIN,MOVEDOUT,FULL1_NAME,FULL2_NAME,GEOID1,GEOID2&for=metropolitan%20statistical%20area/micropolitan%20statistical%20area:*"
+      metro_migration_file <- file.path(data_dir, "metro_to_metro_migration.json")
+      
+      if (!file.exists(metro_migration_file)) {
+        message("Downloading metro-to-metro migration data from Census API...")
+        download.file(metro_migration_url, destfile = metro_migration_file, quiet = TRUE, mode = "wb")
+      } else {
+        message("Loading cached metro-to-metro migration data...")
+      }
+      
+      # read_json() interprets first row as data instead of column names
+      # move_row_to_colnames() fixes this by promoting first row to column headers
+      move_row_to_colnames <- function(X, row = 1) {
+        X <- as_tibble(X)
+        Xrow <- X[row, ]
+        X <- X[-row, ]
+        colnames(X) <- Xrow
+        readr::type_convert(X)
+      }
+      
+      # Extracts the primary state abbreviation from a metro area name
+      # For single-state metros (e.g. "Los Angeles-Long Beach, CA Metro Area") -> "CA"
+      # For multi-state metros (e.g. "New York-Newark-Jersey City, NY-NJ-PA Metro Area") -> "NY"
+      pull_state_from_metro <- function(metro_name) {
+        str_extract(metro_name, ".*, (\\S{2})[-[:alpha:]]* Metro Area", group = 1)
+      }
+      
+      read_json(metro_migration_file, simplifyVector = TRUE) |>
+        as.data.frame() |>
+        move_row_to_colnames() |>
+        select(
+          geoid1     = GEOID1,
+          geoid2     = GEOID2,
+          full1_name = FULL1_NAME,
+          full2_name = FULL2_NAME,
+          moved_in   = MOVEDIN,
+          moved_out  = MOVEDOUT
+        ) |>
+        filter(!full2_name %in% c("Africa", "Asia", "Caribbean", "Central America", 
+                           "Europe", "Northern America", "Oceania and At Sea", 
+                           "South America", "U.S. Island Areas")) |>
+        mutate(
+          state1 = pull_state_from_metro(full1_name),
+          state2 = pull_state_from_metro(full2_name)
+        )
     }
   )
 }
 
 STATE_POP                <- acquire_acs_data("population")
 STATE_TO_STATE_MIGRATION <- acquire_acs_data("state_to_state_migration")
+METRO_TO_METRO_MIGRATION <- acquire_acs_data("metro_to_metro_migration")
 
+glimpse(STATE_POP)
+glimpse(STATE_TO_STATE_MIGRATION)
+glimpse(METRO_TO_METRO_MIGRATION)
 
 ```
 
@@ -304,9 +363,783 @@ or inline, like this: $x$ is `r x`.
 
 ## Exploratory Analysis
 
-Code related to Exploratory Data Analysis goes here. This may include
-exploratory graphics, instructor-provided exploratory questions, or other
-similar elements. 
+### EDA: General
+
+**1. Which states have had the highest net population growth rates over the past decade?**
+
+```{r highest-net-pop-growth}
+
+top_net_pop_growth_state <- STATE_POP |>
+  filter(year %in% c(2015, 2024)) |>
+  pivot_wider(
+    names_from   = year,
+    values_from  = population,
+    names_prefix = "pop_"
+  ) |>
+  mutate(
+    net_growth      = pop_2024 - pop_2015,
+    net_growth_rate = (pop_2024 - pop_2015) / pop_2015 * 100
+  ) |>
+  arrange(desc(net_growth_rate)) |>
+  select(state, pop_2015, pop_2024, net_growth, net_growth_rate) |>
+  slice_max(net_growth_rate, n = 10)
+
+#table
+top_net_growth_table <- top_net_pop_growth_state |>
+  gt() |>
+  tab_header(
+    title    = md("**Top 10 States by Net Population Growth Rate (2015-2024)**"),
+    subtitle = "Based on ACS-1 annual estimates"
+  ) |>
+  cols_label(
+    state           = md("**State**"),
+    pop_2015        = md("**Population<br>(2015)**"),
+    pop_2024        = md("**Population<br>(2024)**"),
+    net_growth      = md("**Net Growth**"),
+    net_growth_rate = md("**Growth Rate (%)**")
+  ) |>
+  cols_align(
+    align   = "center",
+    columns = c(pop_2015, pop_2024, net_growth, net_growth_rate)
+  ) |>
+  fmt_number(
+    columns  = c(pop_2015, pop_2024, net_growth),
+    decimals = 0
+  ) |>
+  fmt_number(
+    columns  = net_growth_rate,
+    decimals = 2
+  ) |>
+  data_color(
+    columns = net_growth_rate,
+    palette = c("#90CAF9", "#1565C0")
+  ) |>
+  tab_source_note(
+    source_note = "Source: ACS-1 Baseline State Population Data, US Census Bureau"
+  )
+
+
+# bar chart
+top_net_growth_bar <- top_net_pop_growth_state |>
+  mutate(state = fct_reorder(state, net_growth_rate)) |>
+  ggplot(aes(x = net_growth_rate, y = state, fill = net_growth_rate)) +
+  geom_col() +
+  geom_vline(xintercept = 0, linewidth = 0.8, color = "black") +
+  geom_text(
+    aes(label = paste0(round(net_growth_rate, 1), "%")),
+    hjust    = -0.2,
+    size     = 3
+  ) +
+  scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
+  labs(
+    title    = "Top 15 States by Net Population Growth Rate (2015-2024)",
+    subtitle = "Percentage change in total population",
+    x        = "Net Growth Rate (%)",
+    y        = NULL,
+    fill     = "Growth Rate (%)",
+    caption  = "Source: ACS-1, US Census Bureau"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position    = "bottom",
+    panel.grid.major.y = element_blank()
+  )
+
+
+top_net_growth_facet <- STATE_POP |>
+  filter(state %in% top_net_pop_growth_state$state) |>
+  ggplot(aes(x = year, y = population, color = state)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.5) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(breaks = c(2015, 2018, 2021, 2024)) +
+  facet_wrap(~state, scales = "free_y") +
+  labs(
+    title    = "Population Change Over Time for Top 10 Fastest Growing States",
+    subtitle = "ACS-1 annual estimates, 2015-2024 (excluding 2020)",
+    x        = NULL,
+    y        = "Total Population",
+    color    = NULL,
+    caption  = "Source: ACS-1, US Census Bureau"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position  = "none",
+    panel.grid.minor = element_blank(),
+    axis.text.x      = element_text(size = 6),
+    panel.spacing    = unit(1.5, "lines")
+  )
+
+
+```
+
+**2. If you meet someone who moved to New York State in the last year, what are the most likely states they moved from? If one of your friends announces they are moving out of the state, where are they most likely to move?**
+
+```{r most-likely-states-moved-to-from-NY}
+
+# most likely states people moved FROM into New York
+moved_to_ny <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_current == "New York",
+    state_1y != "New York",
+    year_current == 2024
+  ) |>
+  arrange(desc(population)) |>
+  select(state_1y, population) |>
+# %age out of total migration to NY
+  mutate(pct = population / sum(population) * 100) |>
+  slice_max(population, n = 5)
+
+# most likely states people moved TO from New York
+moved_from_ny <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_1y == "New York",
+    state_current != "New York",
+    year_current == 2024
+  ) |>
+  arrange(desc(population)) |>
+  select(state_current, population) |>
+  mutate(pct = population / sum(population) * 100) |>
+  slice_max(population, n = 5)
+
+# top 5 states people moved from into New York
+plot_to_ny <- moved_to_ny |>
+  ggplot(aes(x = population, y = fct_reorder(state_1y, population), fill = population)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(pct, 1), "%")),
+    hjust = -0.2,
+    size  = 3
+  ) +
+  scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title   = "Top 5 States People Moved From Into New York (2024)",
+    x       = "Number of People",
+    y       = NULL,
+    caption = "Source: ACS-1, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position    = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+# top 5 states people moved to from New York
+plot_from_ny <- moved_from_ny |>
+  ggplot(aes(x = population, y = fct_reorder(state_current, population), fill = population)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(pct, 1), "%")),
+    hjust = -0.2,
+    size  = 3
+  ) +
+  scale_fill_gradient(low = "#FFCDD2", high = "#C62828") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title   = "Top 5 States People Moved To From New York (2024)",
+    x       = "Number of People",
+    y       = NULL,
+    caption = "Source: ACS-1, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position    = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+# stack vertically using patchwork
+plot_to_ny / plot_from_ny
+
+```
+
+The top 5 states people moved from into New York in 2024 were New Jersey, California, Florida, Pennsylvania and Massachusetts.
+The top 5 states New Yorkers moved to in 2024 were New Jersey, Florida, Pennsylvania, Texas and Connecticut.
+
+**3. If you meet someone who moved to New York City in the last year, what are the most likely metro areas they moved from? If one of your friends announces they are moving out of the city, where are they most likely to move?**
+
+```{r most-likely-states-moved-to-from-nyc}
+
+nyc_metro <- "New York-Newark-Jersey City, NY-NJ-PA Metro Area"
+
+# top 5 metro areas people moved FROM into NYC
+moved_to_nyc <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full1_name == nyc_metro,
+    full2_name != nyc_metro,
+# excluded outside metro area since these are places not considered Metro Areas    
+    full2_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  mutate(pct = moved_in / sum(moved_in) * 100) |>
+  arrange(desc(moved_in)) |>
+  slice_max(moved_in, n = 5) |>
+  mutate(full2_name = str_replace(full2_name, "(.*),\\s*(\\S+)\\s*Metro Area", "\\1, \\2"))
+
+# top 5 metro areas people moved TO from NYC
+moved_from_nyc <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full1_name == nyc_metro,
+    full2_name != nyc_metro,
+# excluded outside metro area since these are places not considered Metro Areas
+    full2_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  mutate(pct = moved_out / sum(moved_out) * 100) |>
+  arrange(desc(moved_out)) |>
+  slice_max(moved_out, n = 5) |>
+  mutate(full2_name = str_replace(full2_name, "(.*),\\s*(\\S+)\\s*Metro Area", "\\1, \\2"))
+
+plot_to_nyc <- moved_to_nyc |>
+  ggplot(aes(x = moved_in, y = fct_reorder(full2_name, moved_in), fill = moved_in)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(pct, 1), "%")),
+    hjust = -0.2,
+    size  = 3
+  ) +
+  scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title   = "Top 5 Metro Areas People Moved From Into NYC",
+    x       = "Number of People",
+    y       = NULL,
+    caption = "Source: ACS-5 2016-2020 Metropolitan Flows, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position    = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+plot_from_nyc <- moved_from_nyc |>
+  ggplot(aes(x = moved_out, y = fct_reorder(full2_name, moved_out), fill = moved_out)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(pct, 1), "%")),
+    hjust = -0.2,
+    size  = 3
+  ) +
+  scale_fill_gradient(low = "#FFCDD2", high = "#C62828") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title   = "Top 5 Metro Areas People Moved To From NYC",
+    x       = "Number of People",
+    y       = NULL,
+    caption = "Source: ACS-5 2016-2020 Metropolitan Flows, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position    = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+plot_to_nyc / plot_from_nyc
+
+
+```
+
+In both cases, the Philadelphia metro area is where someone most likely would have moved to NYC from and where New Yorkers are most likely to move to. 
+
+
+**4. Which states have had the highest amounts of in-migration and out-migration? Furthermore, which states have had the highest amount of net migration? To get total migration in a direction, add up the total migration in that direction: e.g., the total in-migration to Alabama is the sum of people who live in Alabama in 2024 but lived elsewhere in 2023 (this is a sum over 49 other states).Net migration is simply total in-migration minus total out-migration.**
+
+```{r in-out-net-migration-state}
+
+# total in-migration per state (people who moved INTO that state)
+in_migration <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_current != state_1y,
+    year_current  == 2024
+  ) |>
+  group_by(state_current) |>
+  summarize(total_in = sum(population))
+
+
+
+# total out-migration per state (people who moved OUT of that state)
+out_migration <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_current != state_1y,
+    year_current  == 2024
+  ) |>
+  group_by(state_1y) |>
+  summarize(total_out = sum(population))
+
+# combine and compute net migration
+net_migration <- in_migration |>
+  inner_join(out_migration, join_by(state_current == state_1y)) |>
+  mutate(net = total_in - total_out) |>
+  rename(state = state_current)
+
+# plot 1: top 10 states by in-migration
+plot_in_migration <- net_migration |>
+  slice_max(total_in, n = 10) |>
+  mutate(state = fct_reorder(state, total_in)) |>
+  ggplot(aes(x = total_in, y = state, fill = total_in)) +
+  geom_col() +
+  geom_text(
+    aes(label = scales::comma(total_in)),
+    hjust = 1.2,
+    size  = 3,
+    color = "white"
+  ) +
+  scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title   = "States by Total In-Migration",
+    subtitle = "Top 10 (2024)",
+    x       = "Number of People",
+    y       = NULL,
+    caption = "Source: ACS-1, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position    = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+# plot 2: top 10 states by out-migration
+plot_out_migration <- net_migration |>
+  slice_max(total_out, n = 10) |>
+  mutate(state = fct_reorder(state, total_out)) |>
+  ggplot(aes(x = total_out, y = state, fill = total_out)) +
+  geom_col() +
+  geom_text(
+    aes(label = scales::comma(total_in)),
+    hjust = 1.2,
+    size  = 3,
+    color = "white"
+  ) +
+  scale_fill_gradient(low = "#E1BEE7", high = "#4A148C") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title   = "States by Total Out-Migration",
+    subtitle = "Top 10 (2024)",
+    x       = "Number of People",
+    y       = NULL,
+    caption = "Source: ACS-1, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position    = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+net_migration_table <- net_migration |>
+  slice_max(net, n = 10) |>
+  arrange(desc(net)) |>
+  select(state, total_in, total_out, net) |>
+  gt() |>
+  tab_header(
+    title = md("**Top 10 States by Net Migration (2024)**")
+  ) |>
+  cols_label(
+    state     = md("**State**"),
+    total_in  = md("**Total In-Migration**"),
+    total_out = md("**Total Out-Migration**"),
+    net       = md("**Net Migration**")
+  ) |>
+  cols_align(
+    align   = "center",
+    columns = c(total_in, total_out, net)
+  ) |>
+  fmt_number(
+    columns  = c(total_in, total_out, net),
+    decimals = 0
+  ) |>
+  data_color(
+    columns = net,
+    palette = c("#C8E6C9", "#1B5E20")
+  ) |>
+  tab_source_note(
+    source_note = "Source: ACS-1, US Census Bureau"
+  ) |>
+  tab_options(
+    heading.align = "center"
+  )
+
+plot_in_migration | plot_out_migration
+
+net_migration_table
+
+```
+
+
+**5. Which metro areas have had the highest amounts of total in-migration and out-migration? Furthermore, which metro areas have had the highest amount of net migration?**
+
+```{r in-out-net-migration-metro}
+
+# total in-migration per metro area
+metro_in_migration <- METRO_TO_METRO_MIGRATION |>
+  filter(full1_name != full2_name) |>
+  group_by(full1_name) |>
+  summarize(total_in = sum(moved_in, na.rm = TRUE))
+
+# total out-migration per metro area
+metro_out_migration <- METRO_TO_METRO_MIGRATION |>
+  filter(full1_name != full2_name) |>
+  group_by(full1_name) |>
+  summarize(total_out = sum(moved_out, na.rm = TRUE))
+
+# combine and compute net migration
+metro_net_migration <- metro_in_migration |>
+  inner_join(metro_out_migration, join_by(full1_name)) |>
+  mutate(
+    net       = total_in - total_out,
+    full1_name = str_replace(full1_name, "(.*),\\s*(\\S+)\\s*Metro Area", "\\1, \\2")
+  ) |>
+  rename(metro = full1_name)
+
+# # top 10 metro areas by in-migration
+# metro_net_migration |>
+#   slice_max(total_in, n = 10)
+# 
+# # top 10 metro areas by out-migration
+# metro_net_migration |>
+#   slice_max(total_out, n = 10)
+# 
+# # top 10 metro areas by net migration
+# metro_net_migration |>
+#   slice_max(net, n = 10)
+
+# plot 1: top 10 metro areas by in-migration
+plot_metro_in <- metro_net_migration |>
+  slice_max(total_in, n = 10) |>
+  mutate(
+    metro = paste0(str_extract(metro, "^[^-]+"), ", ", str_extract(metro, ",\\s*(\\w{2})", group = 1)),
+    metro = fct_reorder(metro, total_in)
+  ) |>
+  ggplot(aes(x = total_in, y = metro, fill = total_in)) +
+  geom_col() +
+  geom_text(
+    aes(label = scales::comma(total_in)),
+    hjust = 1.2,
+    size = 3,
+    color = "white"
+  ) +
+  scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
+  scale_x_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title = "Metro Areas by In-Migration",
+    subtitle = "Top 10 (2016-2020)",
+    x = "Number of People",
+    y = NULL,
+    caption = "Source: ACS-5, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+# plot 2: top 10 metro areas by out-migration
+plot_metro_out <- metro_net_migration |>
+  slice_max(total_out, n = 10) |>
+  mutate(
+    metro = paste0(str_extract(metro, "^[^-]+"), ", ", str_extract(metro, ",\\s*(\\w{2})", group = 1)),
+    metro = fct_reorder(metro, total_out)
+  ) |>
+  ggplot(aes(x = total_out, y = metro, fill = total_out)) +
+  geom_col() +
+  geom_text(
+    aes(label = scales::comma(total_out)),
+    hjust = 1.2,
+    size  = 3,
+    color = "white"
+  ) +
+  scale_fill_gradient(low = "#E1BEE7", high = "#4A148C") +
+  scale_x_continuous(
+    labels = scales::comma,
+    breaks = seq(0, max(metro_net_migration$total_out), by = 200000),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title = "Metro Areas by Out-Migration",
+    subtitle = "Top 10 (2016-2020)",
+    x = "Number of People",
+    y = NULL,
+    caption = "Source: ACS-5, US Census Bureau"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major.y = element_blank()
+  )
+
+
+# gt table for top 10 metro areas by net migration
+metro_net_table <- metro_net_migration |>
+  slice_max(net, n = 10) |>
+  arrange(desc(net)) |>
+  select(metro, total_in, total_out, net) |>
+  gt() |>
+  tab_header(
+    title = "Top 10 Metro Areas by Net Migration (2016-2020)"
+  ) |>
+  cols_label(
+    metro     = "Metro Area",
+    total_in  = "Total In-Migration",
+    total_out = "Total Out-Migration",
+    net       = "Net Migration"
+  ) |>
+  cols_align(
+    align   = "center",
+    columns = c(total_in, total_out, net)
+  ) |>
+  fmt_number(
+    columns  = c(total_in, total_out, net),
+    decimals = 0
+  ) |>
+  data_color(
+    columns = net,
+    palette = c("#C8E6C9", "#1B5E20")
+  ) |>
+  tab_source_note(
+    source_note = "Source: ACS-5, US Census Bureau"
+  ) |>
+  tab_options(
+    heading.align = "center"
+  )
+
+# display in and out migration side by side
+plot_metro_in | plot_metro_out
+
+metro_net_table
+
+```
+
+
+**6. Which states have the highest fraction of residents who lived there last year? (That is, which states have the lowest proportional total in-migration?)**
+
+```{r state-pop-stability}
+
+# total state populations
+state_pop_2024 <- STATE_POP |>
+  filter(year == 2024) |>
+  select(state, total_pop = population)
+
+# calculate in-migration fraction per state
+state_stability <- STATE_TO_STATE_MIGRATION |>
+  filter(year_current == 2024) |>
+  group_by(state_current) |>
+  summarize(in_migration = sum(population[state_current != state_1y])) |>
+  rename(state = state_current) |>
+  left_join(state_pop_2024, join_by(state)) |>
+  mutate(
+    stability_rate   = 1 - (in_migration / total_pop),
+    in_migration_pct = in_migration / total_pop * 100
+  ) |>
+  filter(state != "Puerto Rico")
+
+state_stability_table <- state_stability |>
+  slice_max(stability_rate, n = 10) |>
+  arrange(desc(stability_rate)) |>
+  select(state, total_pop, in_migration, stability_rate, in_migration_pct) |>
+  gt() |>
+  tab_header(
+    title = md("**Top States by Resident Stability Rate**"),
+    subtitle = md("States with Lowest Proportional Total In-Migration (2024)")
+  ) |>
+  cols_label(
+    state = "State",
+    total_pop = "Total Population",
+    in_migration = "Total In-Migration",
+    stability_rate = "Stability Rate",
+    in_migration_pct = "In-Migration (%)"
+  ) |>
+  cols_align(
+    align = "center",
+    columns = c(total_pop, in_migration, stability_rate, in_migration_pct)
+  ) |>
+  fmt_number(
+    columns = c(total_pop, in_migration),
+    decimals = 0
+  ) |>
+  fmt_percent(
+    columns = stability_rate,
+    decimals = 2
+  ) |>
+  fmt_number(
+    columns = in_migration_pct,
+    decimals = 2
+  ) |>
+  data_color(
+    columns = stability_rate,
+    palette = c("#C8E6C9", "#1B5E20")
+  ) |>
+  tab_source_note(
+    source_note = "Source: ACS-1, US Census Bureau"
+  ) |>
+  tab_options(
+    heading.align = "center"
+  )
+
+state_stability_table
+
+# top 10 states with highest fraction of long-term residents
+# state_stability |>
+#   slice_max(stability_rate, n = 10) |>
+#   arrange(desc(stability_rate))
+
+```
+
+
+**7. Which state has the highest fraction of its population growth attributable to net internal migration? That is, determine the total population growth of each state and see what fraction of it corresponds to net migration (as opposed to deaths, births, or international migration).**
+
+```{r pop-growth-net-migration}
+
+# compute population growth from 2023 to 2024 using STATE_POP
+pop_growth <- STATE_POP |>
+  filter(year %in% c(2023, 2024)) |>
+  pivot_wider(
+    names_from = year,
+    values_from = population,
+    names_prefix = "pop_"
+  ) |>
+  mutate(pop_growth = pop_2024 - pop_2023)
+
+# combine with net_migration (from question #4) and compute fraction of growth attributable to net migration
+migration_growth_share <- pop_growth |>
+  left_join(net_migration, join_by(state)) |>
+  mutate(
+    migration_share = net / pop_growth * 100
+  ) |>
+  filter(state != "Puerto Rico") |>
+  select(state, pop_2023, pop_2024, pop_growth, net, migration_share)
+
+top_migration_growth_state <- migration_growth_share |>
+  slice_max(migration_share, n = 1)
+
+```
+
+The state with the highest fraction of population growth attributable to net internal migration is `r top_migration_growth_state$state`, with `r round(top_migration_growth_state$migration_share, 1)`% of its growth coming from internal migration.
+
+***Note:** Migration Share can exceed 100% if net migration is larger than total population growth (meaning natural growth or international migration was negative), or be negative if net migration was negative while the state still grew overall.*
+
+This is actually an interesting finding in itself — it means some states are growing purely because of internal migration despite losing population to deaths or international emigration. 
+For ex: 
+Net internal migration: +100,000 (people moving in from other states)
+Natural increase: -20,000 (more deaths than births, common in older states)
+Net international migration: -10,000
+
+Then total population growth would be +100,000 - 20,000 - 10,000 = +70,000, but net migration alone was +100,000. So migration_share = 100,000 / 70,000 * 100 = 142.9% — exceeding 100% because the other components partially offset the migration gains.
+
+
+### EDA: New York
+
+**8. Which state had the highest amount of migration into your state? Of the people who moved out of your state, what was the most popular destination state?**
+
+```{r nys-state-migration-flow}
+
+# state with highest amount of migration into New York
+top_inflow_to_ny <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_current == "New York",
+    state_1y != "New York",
+    year_current == 2024
+  ) |>
+  slice_max(population, n = 1)
+
+# most popular destination state for people leaving New York
+top_outflow_from_ny <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_1y      == "New York",
+    state_current != "New York",
+    year_current  == 2024
+  ) |>
+  slice_max(population, n = 1)
+
+```
+The state with the highest amount of migration into New York was `r top_inflow_to_ny$state_1y`, with `r scales::comma(top_inflow_to_ny$population)` people moving in.
+
+Of the people who moved out of New York, the most popular destination was `r top_outflow_from_ny$state_current`, with `r scales::comma(top_outflow_from_ny$population)` people moving there.
+
+
+**9. What is the largest metropolitan area in your state? (You can answer this just using background knowledge; you do not have to use Census data here.) Which metro area, not located in your state, has the highest amount of migration into your state’s largest metro? To which metro area outside of your state do the most residents of your largest metro area move?**
+
+```{r nys-metro-migration-flow}
+
+nyc_metro <- "New York-Newark-Jersey City, NY-NJ-PA Metro Area"
+
+# metro area outside New York with highest migration into NYC metro
+top_inflow_to_nyc <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full1_name == nyc_metro,
+    full2_name != nyc_metro,
+    state2 != "NY",
+    full2_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  slice_max(moved_in, n = 1)
+
+# most popular destination metro outside New York for NYC metro residents
+top_outflow_from_nyc <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full1_name == nyc_metro,
+    full2_name != nyc_metro,
+    state2 != "NY",
+    full2_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  slice_max(moved_out, n = 1)
+
+```
+
+The largest metro area is NYC, which is contained in the *New York-Newark-Jersey City, NY-NJ-PA Metro Area* in our Census data.
+
+The metro area outside of New York with the highest migration into the NYC metro was `r top_inflow_to_nyc$full2_name`, with `r scales::comma(top_inflow_to_nyc$moved_in)` people moving in.
+
+The most popular destination metro outside of New York for NYC metro residents was `r top_outflow_from_nyc$full2_name`, with `r scales::comma(top_outflow_from_nyc$moved_out)` people moving there.
+
+
+**10. Are there any metro areas that have a particularly high connection to your state’s largest metro? (E.g., NYCers were over 15% of people moving into the Miami Metro area.)**
+
+```{r nyc-metro-area-connections}
+
+nyc_connection <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full2_name == nyc_metro,
+    full1_name != nyc_metro,
+    full1_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  left_join(
+    # get total in-migration for each metro area
+    METRO_TO_METRO_MIGRATION |>
+      filter(full1_name != full2_name) |>
+      group_by(full1_name) |>
+      summarize(total_in = sum(moved_in, na.rm = TRUE)),
+    join_by(full1_name)
+  ) |>
+  mutate(
+    nyc_share = moved_in / total_in * 100
+  ) |>
+  filter(nyc_share >= 15) |>
+  arrange(desc(nyc_share)) |>
+  select(full1_name, moved_in, total_in, nyc_share)
+
+
+```
+
+Outside of NYC but within New York State, NYCers account for more than 15% of people moving into these upstate metros: 
+
 
 ## Final Insights and Deliverable
 
