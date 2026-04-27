@@ -33,28 +33,25 @@ library(shadowtext)
 
 ## Introduction
 
-What will your state look like in 2030? Many inquiring politicos are hard at work figuring this out and in this mini-project, we will examine [migration flows](https://www.census.gov/topics/population/migration/guidance/migration-flows.html) within the US to forecast the size of state congressional delegations for the 2032 midterm elections. 
+What will your state look like in 2030? Many inquiring politicos are hard at work figuring this out and in this mini-project, we will examine [migration flows](https://www.census.gov/topics/population/migration/guidance/migration-flows.html) within the US to forecast the size of state congressional delegations for the 2032 midterm elections. Using state-level and metro-level data from the US Census Bureau's [American Community Survey (ACS)](https://en.wikipedia.org/wiki/American_Community_Survey), I intend to paint a picture of what 2030 will hold for the United States and, in particular, New York. 
 
-paint a better picture of what this could possible look like. Using state-level and metro-level data from the US Census Bureau's [American Community Survey (ACS)](https://en.wikipedia.org/wiki/American_Community_Survey), I'll create demographic projections to predict state populations in 2030.
-
-A suitable introduction goes here. In this mini-project, I intend to demonstrate
-my skills at Data Import/API Usage/File Parsing in an analysis of Census Data/Migration Flows data.
+I'll acquire and prepare U.S. Census data from several sources (tidycensus, excel sheets, and census API) in order to model projections that predict state populations through 2030 and calculate what congressional reapportionment may be for New York. To wrap up my findings, I'll write an Advertising Strategy report that lays outs the key insights I've found in state and metro migration flows and how we can use those to build an advertising campaign that brings in enough New Yorkers for an additional congressional seat. 
 
 ## Data Acquisition and Preparation
 
-Code related to Data Acquisition and Preparation goes here.
+### Tasks 1-5
 
-### Task 1-4
+* Acquire data from the `tidycensus` package in R to find total population by state from 2015 - 2024.
+* Acquire data from Census Bureau Excel files for state-to-state migration flows 2023 and 2024.
+* Acquire data via API request for metro-to-metro migration flows.
 
-Acquire data from the `tidycensus` package in R to find total population by state from 2015 - 2024.
-
-Note: Data for 2020 is skipped since regular 1-year ACS for 2020 was not released and is not available in `tidycensus`. 
+***Note:** Data for 2020 is skipped since regular 1-year ACS for 2020 was not released and is not available in `tidycensus`.*
 
 ```{r acs-data-acquisition}
 #| warning: false 
 
 
-acquire_acs_data <- function(dataset = c("population", "state_to_state_migration", "metro_to_metro_migration")) {
+acquire_acs_data <- function(dataset = c("population", "state_to_state_migration", "metro_to_metro_migration", "international_migration")) {
   
   # Validate dataset argument
   dataset <- match.arg(dataset)
@@ -296,6 +293,77 @@ acquire_acs_data <- function(dataset = c("population", "state_to_state_migration
           state1 = pull_state_from_metro(full1_name),
           state2 = pull_state_from_metro(full2_name)
         )
+    },
+    
+    # --- International Migration: people moving into each state from abroad ---
+    # Extracted from "Foreign country" rows in 2024 and 2023 migration files
+    international_migration = {
+      
+      # -- 2024 international migration --
+      migration_url_2024  <- "https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/2024/state-to-state-migration/State_to_State_Migration_Table_2024_T13.xlsx"
+      migration_file_2024 <- file.path(data_dir, "State_to_State_Migration_Table_2024_T13.xlsx")
+      
+      if (!file.exists(migration_file_2024)) {
+        message("Downloading 2024 state-to-state migration file...")
+        download.file(migration_url_2024, destfile = migration_file_2024, quiet = TRUE, mode = "wb")
+      } else {
+        message("Loading cached 2024 state-to-state migration file...")
+      }
+      
+      # Extract only rows where state_1y == "Foreign country"
+      intl_2024 <- read_excel(
+        migration_file_2024,
+        sheet     = "Table",
+        skip      = 8,
+        col_names = c("state_current", "state_1y", "population", "moe")
+      ) |>
+        select(state_current, state_1y, population) |>
+        filter(!is.na(state_current), population != "X") |>
+        mutate(
+          population    = replace(population, population == "N", "0"),
+          population    = as.integer(population),
+          state_current = expand_state_name(state_current),
+          year          = 2024L
+        ) |>
+        filter(state_1y == "Foreign country") |>
+        select(state = state_current, international_migration = population, year) |>
+        filter(!state %in% c("District of Columbia", "Puerto Rico"))
+      
+      # -- 2023 international migration --
+      migration_url_2023  <- "https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/2023/state-to-state-migration/State_to_State_Migration_Table_2023_T13.xlsx"
+      migration_file_2023 <- file.path(data_dir, "State_to_State_Migration_Table_2023_T13.xlsx")
+      
+      if (!file.exists(migration_file_2023)) {
+        message("Downloading 2023 state-to-state migration file...")
+        download.file(migration_url_2023, destfile = migration_file_2023, quiet = TRUE, mode = "wb")
+      } else {
+        message("Loading cached 2023 state-to-state migration file...")
+      }
+      
+      # Extract only rows where state_1y == "Foreign country" from tool_input sheet
+      intl_2023 <- read_excel(
+        migration_file_2023,
+        sheet     = "tool_input",
+        skip      = 1,
+        col_names = c("state_1y", "state_current", "population", "moe",
+                      "blank", "state", "in_est", "in_moe", "out_est", "out_moe",
+                      "blank2", "state_names")
+      ) |>
+        select(state_1y, state_current, population) |>
+        filter(!is.na(state_1y), population != "N/A") |>
+        mutate(
+          population    = replace(population, population == "N", "0"),
+          population    = as.integer(population),
+          state_current = str_trim(state_current),
+          state_1y      = str_trim(state_1y),
+          year          = 2023L
+        ) |>
+        filter(state_1y == "Foreign country") |>
+        select(state = state_current, international_migration = population, year) |>
+        filter(!state %in% c("District of Columbia", "Puerto Rico"))
+      
+      # Combine both years
+      bind_rows(intl_2024, intl_2023)
     }
   )
 }
@@ -303,23 +371,15 @@ acquire_acs_data <- function(dataset = c("population", "state_to_state_migration
 STATE_POP                <- acquire_acs_data("population")
 STATE_TO_STATE_MIGRATION <- acquire_acs_data("state_to_state_migration")
 METRO_TO_METRO_MIGRATION <- acquire_acs_data("metro_to_metro_migration")
-
-glimpse(STATE_POP)
-glimpse(STATE_TO_STATE_MIGRATION)
-glimpse(METRO_TO_METRO_MIGRATION)
+INTERNATIONAL_MIGRATION  <- acquire_acs_data("international_migration")
 
 ```
 
-*Note:* My data frame will have more than 5000 rows because I've taken District of Columbia (DC), Puerto Rico and U.S. Island Areas into consideration and not just the 50 mainland(-ish) states. 
-
-Migrants from Puerto Rico have an automatic right to vote and we can represent significant voting blocks in states such as New York, Connecticut and Florida. Same goes for U.S. Island Areas.  
-Excluded migration flows of people from foreign countries since it is not a guarantee that they will be able to vote due to legal status. 
+***Note:** My data frame will have more than 5000 rows because I've taken Puerto Rico and U.S. Island Areas into consideration and not just the 50 mainland(-ish) states. In-migration from Puerto Rico and islands may represent significant voting blocks that can be useful for analysis later on.*
 
 
-Checking if Data is correct for Task #1
-
-```{r initial-data-check, eval=FALSE}
-
+```{r initial-data-check, include=FALSE}
+#Checking if Data is correct for Task #1
 dim(STATE_POP)
 glimpse(STATE_POP)
 head(STATE_POP)
@@ -343,24 +403,6 @@ STATE_POP |> summarize(across(everything(), ~sum(is.na(.))))
 STATE_POP |> filter(population < 100000 | population > 50000000)
 ```
 
-
-
-Remember that code blocks look like this: 
-
-```{r}
-# Your code goes in chunks like this
-library(tidyverse) # You will want this line for almost all MPs
-x <- 1 + 2 + 3
-```
-
-and you can then print variables from chunks: 
-
-```{r}
-x
-```
-
-or inline, like this: $x$ is `r x`.
-
 ## Exploratory Analysis
 
 ### EDA: General
@@ -382,80 +424,34 @@ top_net_pop_growth_state <- STATE_POP |>
   ) |>
   arrange(desc(net_growth_rate)) |>
   select(state, pop_2015, pop_2024, net_growth, net_growth_rate) |>
-  slice_max(net_growth_rate, n = 10)
+  slice_max(net_growth_rate, n = 4)
 
-#table
-top_net_growth_table <- top_net_pop_growth_state |>
-  gt() |>
-  tab_header(
-    title    = md("**Top 10 States by Net Population Growth Rate (2015-2024)**"),
-    subtitle = "Based on ACS-1 annual estimates"
-  ) |>
-  cols_label(
-    state           = md("**State**"),
-    pop_2015        = md("**Population<br>(2015)**"),
-    pop_2024        = md("**Population<br>(2024)**"),
-    net_growth      = md("**Net Growth**"),
-    net_growth_rate = md("**Growth Rate (%)**")
-  ) |>
-  cols_align(
-    align   = "center",
-    columns = c(pop_2015, pop_2024, net_growth, net_growth_rate)
-  ) |>
-  fmt_number(
-    columns  = c(pop_2015, pop_2024, net_growth),
-    decimals = 0
-  ) |>
-  fmt_number(
-    columns  = net_growth_rate,
-    decimals = 2
-  ) |>
-  data_color(
-    columns = net_growth_rate,
-    palette = c("#90CAF9", "#1565C0")
-  ) |>
-  tab_source_note(
-    source_note = "Source: ACS-1 Baseline State Population Data, US Census Bureau"
-  )
-
-
-# bar chart
-top_net_growth_bar <- top_net_pop_growth_state |>
-  mutate(state = fct_reorder(state, net_growth_rate)) |>
-  ggplot(aes(x = net_growth_rate, y = state, fill = net_growth_rate)) +
-  geom_col() +
-  geom_vline(xintercept = 0, linewidth = 0.8, color = "black") +
-  geom_text(
-    aes(label = paste0(round(net_growth_rate, 1), "%")),
-    hjust    = -0.2,
-    size     = 3
-  ) +
-  scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
-  labs(
-    title    = "Top 15 States by Net Population Growth Rate (2015-2024)",
-    subtitle = "Percentage change in total population",
-    x        = "Net Growth Rate (%)",
-    y        = NULL,
-    fill     = "Growth Rate (%)",
-    caption  = "Source: ACS-1, US Census Bureau"
-  ) +
-  theme_minimal() +
-  theme(
-    legend.position    = "bottom",
-    panel.grid.major.y = element_blank()
-  )
-
+growth_labels <- top_net_pop_growth_state |>
+  select(state, net_growth_rate)
 
 top_net_growth_facet <- STATE_POP |>
   filter(state %in% top_net_pop_growth_state$state) |>
   ggplot(aes(x = year, y = population, color = state)) +
   geom_line(linewidth = 0.8) +
   geom_point(size = 1.5) +
+  geom_text(
+    data        = growth_labels,
+    aes(
+      x     = 2015,
+      y     = Inf,
+      label = paste0(round(net_growth_rate, 1), "%")
+    ),
+    hjust       = -0.1,
+    vjust       = 1.5,
+    size        = 6,
+    color       = "darkgreen",
+    inherit.aes = FALSE
+  ) +  
   scale_y_continuous(labels = scales::comma) +
   scale_x_continuous(breaks = c(2015, 2018, 2021, 2024)) +
   facet_wrap(~state, scales = "free_y") +
   labs(
-    title    = "Population Change Over Time for Top 10 Fastest Growing States",
+    title    = "Population Change Over Time for Fastest Growing States",
     subtitle = "ACS-1 annual estimates, 2015-2024 (excluding 2020)",
     x        = NULL,
     y        = "Total Population",
@@ -470,8 +466,72 @@ top_net_growth_facet <- STATE_POP |>
     panel.spacing    = unit(1.5, "lines")
   )
 
+top_net_growth_facet
+
+
+#table
+# top_net_growth_table <- top_net_pop_growth_state |>
+#   gt() |>
+#   tab_header(
+#     title    = md("**Top 10 States by Net Population Growth Rate (2015-2024)**"),
+#     subtitle = "Based on ACS-1 annual estimates"
+#   ) |>
+#   cols_label(
+#     state           = md("**State**"),
+#     pop_2015        = md("**Population<br>(2015)**"),
+#     pop_2024        = md("**Population<br>(2024)**"),
+#     net_growth      = md("**Net Growth**"),
+#     net_growth_rate = md("**Growth Rate (%)**")
+#   ) |>
+#   cols_align(
+#     align   = "center",
+#     columns = c(pop_2015, pop_2024, net_growth, net_growth_rate)
+#   ) |>
+#   fmt_number(
+#     columns  = c(pop_2015, pop_2024, net_growth),
+#     decimals = 0
+#   ) |>
+#   fmt_number(
+#     columns  = net_growth_rate,
+#     decimals = 2
+#   ) |>
+#   data_color(
+#     columns = net_growth_rate,
+#     palette = c("#90CAF9", "#1565C0")
+#   ) |>
+#   tab_source_note(
+#     source_note = "Source: ACS-1 Baseline State Population Data, US Census Bureau"
+#   )
+
+# # bar chart
+# top_net_growth_bar <- top_net_pop_growth_state |>
+#   mutate(state = fct_reorder(state, net_growth_rate)) |>
+#   ggplot(aes(x = net_growth_rate, y = state, fill = net_growth_rate)) +
+#   geom_col() +
+#   geom_vline(xintercept = 0, linewidth = 0.8, color = "black") +
+#   geom_text(
+#     aes(label = paste0(round(net_growth_rate, 1), "%")),
+#     hjust    = -0.2,
+#     size     = 3
+#   ) +
+#   scale_fill_gradient(low = "#90CAF9", high = "#1565C0") +
+#   labs(
+#     title    = "Top 15 States by Net Population Growth Rate (2015-2024)",
+#     subtitle = "Percentage change in total population",
+#     x        = "Net Growth Rate (%)",
+#     y        = NULL,
+#     fill     = "Growth Rate (%)",
+#     caption  = "Source: ACS-1, US Census Bureau"
+#   ) +
+#   theme_minimal() +
+#   theme(
+#     legend.position    = "bottom",
+#     panel.grid.major.y = element_blank()
+#   )
 
 ```
+
+Idaho (20.9%), Utah (16.9%), Florida (15.3%) and Texas (13.9%) have the highest net population growth rates over the past decade.
 
 **2. If you meet someone who moved to New York State in the last year, what are the most likely states they moved from? If one of your friends announces they are moving out of the state, where are they most likely to move?**
 
@@ -649,10 +709,10 @@ plot_to_nyc / plot_from_nyc
 
 ```
 
-In both cases, the Philadelphia metro area is where someone most likely would have moved to NYC from and where New Yorkers are most likely to move to. 
+The Philadelphia, PA metro area is where someone most likely would have moved to NYC from and where New Yorkers are most likely to move to. 
 
 
-**4. Which states have had the highest amounts of in-migration and out-migration? Furthermore, which states have had the highest amount of net migration? To get total migration in a direction, add up the total migration in that direction: e.g., the total in-migration to Alabama is the sum of people who live in Alabama in 2024 but lived elsewhere in 2023 (this is a sum over 49 other states).Net migration is simply total in-migration minus total out-migration.**
+**4. Which states have had the highest amounts of in-migration and out-migration? Furthermore, which states have had the highest amount of net migration?**
 
 ```{r in-out-net-migration-state}
 
@@ -781,6 +841,12 @@ net_migration_table
 
 ```
 
+Florida, Texas, and California had the highest amounts of in-migration.
+
+The same states had the highest amounts of out-migration except in a differing order (California, Florida, Texas).
+
+Texas, Florida and North Carolina had the highest amount of net migration.
+
 
 **5. Which metro areas have had the highest amounts of total in-migration and out-migration? Furthermore, which metro areas have had the highest amount of net migration?**
 
@@ -806,18 +872,6 @@ metro_net_migration <- metro_in_migration |>
     full1_name = str_replace(full1_name, "(.*),\\s*(\\S+)\\s*Metro Area", "\\1, \\2")
   ) |>
   rename(metro = full1_name)
-
-# # top 10 metro areas by in-migration
-# metro_net_migration |>
-#   slice_max(total_in, n = 10)
-# 
-# # top 10 metro areas by out-migration
-# metro_net_migration |>
-#   slice_max(total_out, n = 10)
-# 
-# # top 10 metro areas by net migration
-# metro_net_migration |>
-#   slice_max(net, n = 10)
 
 # plot 1: top 10 metro areas by in-migration
 plot_metro_in <- metro_net_migration |>
@@ -928,6 +982,12 @@ metro_net_table
 
 ```
 
+Los Angeles, CA, Dallas, TX, New York, NY metro areas had the highest amounts of total in-migration.
+
+New York, NY, Los Angeles, CA, and Chicago, IL metro areas had the highest amounts of total out-migration.
+
+Phoenix, AZ, Riverside, CA, and Austin, TX had the highest amount of net migration.
+
 
 **6. Which states have the highest fraction of residents who lived there last year? (That is, which states have the lowest proportional total in-migration?)**
 
@@ -996,12 +1056,9 @@ state_stability_table <- state_stability |>
 
 state_stability_table
 
-# top 10 states with highest fraction of long-term residents
-# state_stability |>
-#   slice_max(stability_rate, n = 10) |>
-#   arrange(desc(stability_rate))
-
 ```
+
+California, Michigan and New York had the lowest proportional total in-migration.
 
 
 **7. Which state has the highest fraction of its population growth attributable to net internal migration? That is, determine the total population growth of each state and see what fraction of it corresponds to net migration (as opposed to deaths, births, or international migration).**
@@ -1034,15 +1091,17 @@ top_migration_growth_state <- migration_growth_share |>
 
 The state with the highest fraction of population growth attributable to net internal migration is `r top_migration_growth_state$state`, with `r round(top_migration_growth_state$migration_share, 1)`% of its growth coming from internal migration.
 
-***Note:** Migration Share can exceed 100% if net migration is larger than total population growth (meaning natural growth or international migration was negative), or be negative if net migration was negative while the state still grew overall.*
+***Note:** Migration Share can exceed 100% if net migration is larger than total population growth (meaning natural growth or international migration was negative), or be negative if net migration was negative while the state still grew overall. It means some states are growing purely because of internal migration despite losing population to deaths or international emigration.*
 
-This is actually an interesting finding in itself — it means some states are growing purely because of internal migration despite losing population to deaths or international emigration. 
-For ex: 
-Net internal migration: +100,000 (people moving in from other states)
-Natural increase: -20,000 (more deaths than births, common in older states)
-Net international migration: -10,000
+*For example: *
 
-Then total population growth would be +100,000 - 20,000 - 10,000 = +70,000, but net migration alone was +100,000. So migration_share = 100,000 / 70,000 * 100 = 142.9% — exceeding 100% because the other components partially offset the migration gains.
+* *Net internal migration: +100,000 (people moving in from other states)*
+
+* *Natural increase: -20,000 (more deaths than births, common in older states)*
+
+* *Net international migration: -10,000*
+
+*Then total population growth would be +100,000 - 20,000 - 10,000 = +70,000, but net migration alone was +100,000. So migration share = 100,000 / 70,000* * *100 = 142.9%, which exceeds 100% because the other components partially offset the migration gains.*
 
 
 ### EDA: New York
@@ -1103,14 +1162,14 @@ top_outflow_from_nyc <- METRO_TO_METRO_MIGRATION |>
 
 ```
 
-The largest metro area is NYC, which is contained in the *New York-Newark-Jersey City, NY-NJ-PA Metro Area* in our Census data.
+The largest metro area is NYC, which is contained in the New York-Newark-Jersey City, NY-NJ-PA Metro Area in our Census data.
 
 The metro area outside of New York with the highest migration into the NYC metro was `r top_inflow_to_nyc$full2_name`, with `r scales::comma(top_inflow_to_nyc$moved_in)` people moving in.
 
 The most popular destination metro outside of New York for NYC metro residents was `r top_outflow_from_nyc$full2_name`, with `r scales::comma(top_outflow_from_nyc$moved_out)` people moving there.
 
 
-**10. Are there any metro areas that have a particularly high connection to your state’s largest metro? (E.g., NYCers were over 15% of people moving into the Miami Metro area.)**
+**10. Are there any metro areas that have a particularly high connection to your state’s largest metro?**
 
 ```{r nyc-metro-area-connections}
 
@@ -1135,15 +1194,542 @@ nyc_connection <- METRO_TO_METRO_MIGRATION |>
   arrange(desc(nyc_share)) |>
   select(full1_name, moved_in, total_in, nyc_share)
 
-
 ```
 
-Outside of NYC but within New York State, NYCers account for more than 15% of people moving into these upstate metros: 
+Outside of NYC and New York State, NYCers account for over half (`r round(nyc_connection |> slice_max(nyc_share, n=1) |> pull(nyc_share), 1)`%) of migration into the `r nyc_connection |> slice_max(nyc_share, n=1) |> pull(full1_name)`.
 
 
 ## Final Insights and Deliverable
 
-Code related to the final deliverable of the assignment goes here. 
+### Population Projections
+
+```{r population-projections-2030}
+## TASK 7 - POPULATION PROJECTION
+#
+#
+## National populations and migratoin excluding DC and Puerto Rico for forecast model
+national_pop <- STATE_POP |>
+  filter(!state %in% c("District of Columbia", "Puerto Rico"))
+
+national_migration <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    !state_current %in% c("District of Columbia", "Puerto Rico"),
+    !state_1y      %in% c("District of Columbia", "Puerto Rico")
+  )
+
+# Step 1: Compute M(t) - total international in-migration for each year
+# M(2023): people living abroad in 2023 who moved to a US state by 2024
+M_2023 <- INTERNATIONAL_MIGRATION |>
+  filter(year == 2024) |>
+  summarize(total = sum(international_migration, na.rm = TRUE)) |>
+  pull(total)
+
+M_2022 <- INTERNATIONAL_MIGRATION |>
+  filter(year == 2023) |>
+  summarize(total = sum(international_migration, na.rm = TRUE)) |>
+  pull(total)
+
+# Step 2: Compute g for each year
+# g(2023) = (P(2024) - P(2023) - M(2023)) / P(2023)
+P_2023 <- national_pop |> filter(year == 2023) |> summarize(total = sum(population)) |> pull(total)
+P_2024 <- national_pop |> filter(year == 2024) |> summarize(total = sum(population)) |> pull(total)
+
+g_2023 <- (P_2024 - P_2023 - M_2023) / P_2023
+
+# g(2022) = (P(2023) - P(2022) - M(2022)) / P(2022)
+P_2022 <- national_pop |> filter(year == 2022) |> summarize(total = sum(population)) |> pull(total)
+
+g_2022 <- (P_2023 - P_2022 - M_2022) / P_2022
+
+# Step 3: Compute migration rates m_j->i for each state pair
+# m_j->i = M_j->i / sqrt(P_i * P_j)
+# j = origin state, i = destination state
+
+# State populations for 2022, 2023 and 2024
+state_pop_2022 <- national_pop |> filter(year == 2022) |> select(state, population)
+state_pop_2023 <- national_pop |> filter(year == 2023) |> select(state, population)
+state_pop_2024 <- national_pop |> filter(year == 2024) |> select(state, population)
+
+# m_j->i for 2023 (using 2023 and 2024 populations)
+m_2023 <- national_migration |>
+  filter(year_current == 2024, state_current != state_1y) |>
+  select(state_j = state_1y, state_i = state_current, M_ji = population) |>
+  left_join(state_pop_2024, join_by(state_i == state)) |>
+  rename(pop_i = population) |>
+  left_join(state_pop_2023, join_by(state_j == state)) |>
+  rename(pop_j = population) |>
+  mutate(m_ji = M_ji / sqrt(pop_i * pop_j))
+
+# m_j->i for 2022 (using 2022 and 2023 populations)
+m_2022 <- national_migration |>
+  filter(year_current == 2023, state_current != state_1y) |>
+  select(state_j = state_1y, state_i = state_current, M_ji = population) |>
+  left_join(state_pop_2023, join_by(state_i == state)) |>
+  rename(pop_i = population) |>
+  left_join(state_pop_2022, join_by(state_j == state)) |>
+  rename(pop_j = population) |>
+  mutate(m_ji = M_ji / sqrt(pop_i * pop_j))
+
+# Step 5: Average g and m_ji over both years
+g_bar <- (g_2023 + g_2022) / 2
+
+m_bar <- m_2023 |>
+# full join retains all state pairs even if a pair only appears in one year  
+  full_join(m_2022, join_by(state_i, state_j)) |>
+#replace NA values with 0 for pairs that appear in one YoY migration and not the other, then take average. Otherwise, m_ji_bar could be NA for some state pairs
+  mutate(
+    m_ji.x   = replace_na(m_ji.x, 0),
+    m_ji.y   = replace_na(m_ji.y, 0),
+    m_ji_bar = (m_ji.x + m_ji.y) / 2
+  ) |>
+  select(state_i, state_j, m_ji_bar)
+
+# Step 6: Project populations forward to 2030
+# Start with 2024 populations as the base year
+current_pop <- state_pop_2024 |>
+  rename(pop = population)
+
+# Project forward one year using the forecast model
+# P_i(t+1) = P_i(t) * (1 + g_bar) + sum over j of m_ji_bar * sqrt(P_i(t) * P_j(t))
+project_one_year <- function(pop_df, m_bar, g_bar) {
+  
+  # join current populations onto m_bar for both state_i and state_j
+  m_with_pop <- m_bar |>
+    left_join(pop_df, join_by(state_i == state)) |>
+    rename(pop_i = pop) |>
+    left_join(pop_df, join_by(state_j == state)) |>
+    rename(pop_j = pop) |>
+    mutate(migration_contribution = m_ji_bar * sqrt(pop_i * pop_j))
+  
+  # sum migration contributions for each destination state
+  migration_in <- m_with_pop |>
+    group_by(state_i) |>
+    summarize(total_migration_in = sum(migration_contribution, na.rm = TRUE))
+  
+  # apply natural growth and add migration
+  pop_df |>
+    left_join(migration_in, join_by(state == state_i)) |>
+    mutate(
+      pop = pop * (1 + g_bar) + replace_na(total_migration_in, 0)
+    ) |>
+    select(state, pop)
+}
+
+# iterate year by year from 2025 to 2030 storing all years
+pop_projections <- accumulate(
+  2025:2030,
+  function(pop_df, yr) project_one_year(pop_df, m_bar, g_bar),
+  .init = current_pop
+) |>
+  set_names(c(2024, 2025:2030)) |>
+  map2(c(2024, 2025:2030), ~ mutate(.x, year = .y)) |>
+  bind_rows()
+
+nys_population_historic_and_projected_plot <- bind_rows(
+  STATE_POP |>
+    filter(state == "New York") |>
+    mutate(type = "Actual"),
+  pop_projections |>
+    filter(state == "New York", year > 2024) |>
+    rename(population = pop) |>
+    mutate(type = "Projected")
+) |>
+  ggplot(aes(x = year, y = population, color = type, linetype = type)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_x_continuous(breaks = c(2015:2019, 2021:2030)) +
+  scale_color_manual(values = c("Actual" = "#1565C0", "Projected" = "#C62828")) +
+  scale_linetype_manual(values = c("Actual" = "solid", "Projected" = "dashed")) +
+  labs(
+    title    = "New York State Population: Historical and Projected (2015-2030)",
+    subtitle = "Based on ACS-1 estimates and Huntington-Hill forecast model",
+    x        = NULL,
+    y        = "Population",
+    color    = NULL,
+    linetype = NULL,
+    caption  = "Source: ACS-1, US Census Bureau. Note: 2020 excluded due to COVID-19 data gap."
+  ) +
+  theme_bw() +
+  theme(
+    legend.position  = "bottom",
+    panel.grid.minor = element_blank(),
+    axis.text.x      = element_text(size = 6)
+  )
+
+nys_population_historic_and_projected_plot
+
+```
+
+
+### Reapportionment
+
+```{r nys-reapportionment}
+##TASK 8 - REAPPORTIONMENT 
+#
+# Apply Huntington-Hill method to 2030 population projections
+MAX_DISTRICTS <- 100 # max gives safe buffer zone for algorithm to do its thing
+N_DISTRICTS   <- 435
+
+ny_districts_2030 <- pop_projections |>
+  filter(year == 2030) |>
+  expand_grid(cd = seq(1, MAX_DISTRICTS)) |>
+  mutate(
+    hh_den    = sqrt(cd * (cd + 1)),
+    hh_weight = pop / hh_den
+  ) |>
+  slice_max(hh_weight, n = N_DISTRICTS) |>
+  group_by(state) |>
+  summarize(
+    population   = first(pop),
+    n_districts  = n()
+  ) |>
+  filter(state == "New York") |>
+  pull(n_districts)
+
+
+all_states_apportionment_table <- pop_projections |>
+  filter(year == 2030) |>
+  expand_grid(cd = seq(1, MAX_DISTRICTS)) |>
+  mutate(
+    hh_den    = sqrt(cd * (cd + 1)),
+    hh_weight = pop / hh_den
+  ) |>
+  slice_max(hh_weight, n = N_DISTRICTS) |>
+  group_by(state) |>
+  summarize(
+    population  = first(pop),
+    n_districts = n()
+  ) |>
+  mutate(pop_per_district = population / n_districts) |>
+  arrange(desc(n_districts), desc(population), state) |>
+  gt(rowname_col = "state") |>
+  cols_label(
+    population      = "Projected Population (2030)",
+    n_districts     = "Number of Congressional Districts",
+    pop_per_district = "Approximate Population per District"
+  ) |>
+  fmt_integer(c(population, pop_per_district)) |>
+  data_color(
+    columns = pop_per_district,
+    palette = "PuOr"
+  ) |>
+  grand_summary_rows(
+    columns = c(population, n_districts),
+    fns     = list("Total" ~ sum(.)),
+    fmt     = ~ fmt_integer(.)
+  ) |>
+  tab_header("Projected Congressional Apportionments for 2030") |>
+  tab_source_note(
+    md("Apportionments computed using the Huntington-Hill Method.
+    Population projections based on ACS-1 migration flows (2023-2024).")
+  )
+
+```
+
+New York is projected to have `r ny_districts_2030` congressional districts as of the 2030 redistricting cycle. 
+
+### I'm Walking Here! But Where To? 
+
+##### *New Yorkers are Walking Out on New York but are Enough Moving In*
+
+```{r nys-advertising-strategy}
+
+# Find states near the low end of population per district (vulnerable to losing a seat)
+vulnerable_states <- pop_projections |>
+  filter(year == 2030) |>
+  expand_grid(cd = seq(1, MAX_DISTRICTS)) |>
+  mutate(
+    hh_den    = sqrt(cd * (cd + 1)),
+    hh_weight = pop / hh_den
+  ) |>
+  slice_max(hh_weight, n = N_DISTRICTS) |>
+  group_by(state) |>
+  summarize(
+    population  = first(pop),
+    n_districts = n()
+  ) |>
+  mutate(pop_per_district = population / n_districts) |>
+  arrange(pop_per_district)
+
+# How many people would NY need to gain to get an extra seat?
+# Find the priority value of the next seat NY would get vs
+# the lowest priority value currently allocated
+apportionment_2030 <- pop_projections |>
+  filter(year == 2030) |>
+  expand_grid(cd = seq(1, MAX_DISTRICTS)) |>
+  mutate(
+    hh_den    = sqrt(cd * (cd + 1)),
+    hh_weight = pop / hh_den
+  )
+
+
+# Priority value of NY's next potential seat
+ny_next_seat <- apportionment_2030 |>
+  filter(state == "New York") |>
+  slice_max(hh_weight, n = ny_districts_2030 + 1) |>
+  slice_min(hh_weight, n = 1) |>
+  pull(hh_weight)
+
+#Lower priority value states currently allocated
+lower_allocation <- apportionment_2030 |> 
+  slice_max(hh_weight, n = N_DISTRICTS) |>
+  slice_min(hh_weight, n = 10)
+
+
+# Lowest priority value currently allocated (435th seat)
+lowest_allocated <- apportionment_2030 |>
+  slice_max(hh_weight, n = N_DISTRICTS) |>
+  slice_min(hh_weight, n = 1) |>
+  pull(hh_weight)
+
+# The state holding the 435th seat
+seat_435_state <- apportionment_2030 |>
+  slice_max(hh_weight, n = N_DISTRICTS) |>
+  slice_min(hh_weight, n = 1) |>
+  pull(state)
+
+
+# Top sources of in-migration to New York state
+top_sources_ny <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_current == "New York",
+    state_1y      != "New York",
+    year_current  == 2024
+  ) |>
+  arrange(desc(population)) |>
+  slice_max(population, n = 10)
+
+# Top destinations of out-migration from New York state
+top_destinations_ny <- STATE_TO_STATE_MIGRATION |>
+  filter(
+    state_1y      == "New York",
+    state_current != "New York",
+    year_current  == 2024
+  ) |>
+  arrange(desc(population)) |>
+  slice_max(population, n = 5)
+
+#Identify NY metros
+ny_metros <- METRO_TO_METRO_MIGRATION |>
+  distinct(full1_name) |>
+  filter(str_detect(full1_name, "NY")) |>
+  pull(full1_name)
+
+#NY's top 3 metro areas
+ny_top3_metros <- c(
+  "New York-Newark-Jersey City, NY-NJ-PA Metro Area",
+  "Buffalo-Cheektowaga, NY Metro Area",
+  "Rochester, NY Metro Area"
+)
+
+# Top sources of in-migration into NY's 3 largest metro areas (excluding other NY metros)
+top_sources_ny_metro <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full1_name %in% ny_top3_metros,
+    !full2_name %in% ny_metros,
+    full2_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  group_by(full1_name) |>
+  mutate(pct = moved_in / sum(moved_in) * 100) |>
+  slice_max(moved_in, n = 5) |>
+  mutate(full2_name = str_replace(full2_name, "(.*),\\s*(\\S+)\\s*Metro Area", "\\1, \\2")) |>
+  ungroup()
+
+# Top destinations of out-migration from NY's 3 largest metro areas (excluding other NY metros)
+top_destinations_ny_metro <- METRO_TO_METRO_MIGRATION |>
+  filter(
+    full1_name %in% ny_top3_metros,
+    !full2_name %in% ny_metros,
+    full2_name != "Outside Metro Area within U.S. or Puerto Rico"
+  ) |>
+  group_by(full1_name) |>
+  mutate(pct = moved_out / sum(moved_out) * 100) |>
+  slice_max(moved_out, n = 10) |>
+  mutate(full2_name = str_replace(full2_name, "(.*),\\s*(\\S+)\\s*Metro Area", "\\1, \\2")) |>
+  ungroup()
+
+# print(top_sources_ny)
+# print(top_destinations_ny)
+# print(top_sources_ny_metro)
+# print(top_destinations_ny_metro)
+
+
+#Net Migration for the top destination states NYers move to
+  top_destination_states_net <- STATE_TO_STATE_MIGRATION |>
+    filter(
+      year_current == 2024,
+      state_current != state_1y
+    ) |>
+    filter(
+      (state_1y == "New York" & state_current %in% top_destinations_ny$state_current) |
+      (state_current == "New York" & state_1y %in% top_destinations_ny$state_current)
+    ) |>
+    group_by(state = if_else(state_1y == "New York", state_current, state_1y)) |>
+    summarize(
+      inflow  = sum(population[state_current == "New York"]),
+      outflow = sum(population[state_1y == "New York"])
+    ) |>
+    mutate(
+      net          = inflow - outflow,
+      state        = fct_reorder(state, inflow),
+      outflow_neg  = -outflow
+    ) |>
+    pivot_longer(
+      cols      = c(inflow, outflow_neg),
+      names_to  = "type",
+      values_to = "population"
+    )
+
+#plot for net migration for top destination states NYers move to
+  top_destination_states_net_plot <- top_destination_states_net |>
+    ggplot(aes(x = population, y = state, fill = type)) +
+    geom_col() +
+    geom_vline(xintercept = 0, linewidth = 0.8, color = "black") +
+    geom_text(
+      aes(x = -outflow, label = paste0("Net: ", scales::comma(net))),
+      hjust  = -0.1,
+      size   = 3,
+      color  = "white",
+      data   = . %>% filter(type == "outflow_neg")
+    ) +
+    scale_fill_manual(
+      values = c("inflow" = "#1565C0", "outflow_neg" = "#C62828"),
+      labels = c("Inflow to NY", "Outflow from NY")
+    ) +
+    scale_x_continuous(
+      labels = function(x) scales::comma(abs(x)),
+      expand = expansion(mult = c(0.15, 0.25))
+    ) +
+    labs(
+      title    = "New York State Migration Flows in Top 5 Destination States (2024)",
+      subtitle = "Inflow vs Outflow",
+      x        = "Number of People",
+      y        = NULL,
+      fill     = NULL,
+      caption  = "Source: ACS-1, US Census Bureau"
+    ) +
+    theme_bw() +
+    theme(
+      legend.position    = "bottom",
+      panel.grid.major.y = element_blank()
+    )
+  
+  
+# function to create diverging bar chart for a single NY metro area
+plot_metro_sources <- function(metro_name) {
+  top_sources_ny_metro |>
+    filter(full1_name == metro_name) |>
+    mutate(
+      net         = moved_in - moved_out,
+      full2_name  = fct_reorder(full2_name, net),
+      outflow_neg = -moved_out
+    ) |>
+    pivot_longer(
+      cols      = c(moved_in, outflow_neg),
+      names_to  = "type",
+      values_to = "population"
+    ) |>
+    ggplot(aes(x = population, y = full2_name, fill = type)) +
+    geom_col() +
+    geom_vline(xintercept = 0, linewidth = 0.8, color = "black") +
+    geom_text(
+      aes(x = -moved_out, label = paste0("Net: ", scales::comma(net))),
+      hjust       = -0.1,
+      vjust       = 0.5,
+      size        = 3,
+      color       = "white",
+      data        = . %>% filter(type == "moved_in")
+    ) +
+    scale_fill_manual(
+      values = c("moved_in" = "#1565C0", "outflow_neg" = "#C62828"),
+      labels = c("Inflow to NY Metro", "Outflow from NY Metro")
+    ) +
+    scale_x_continuous(
+      labels = function(x) scales::comma(abs(x)),
+      expand = expansion(mult = c(0.15, 0.25))
+    ) +
+    labs(
+      title    = glue("Migration Flows: {metro_name}"),
+      subtitle = "Inflow (right) vs Outflow (left)",
+      x        = "Number of People",
+      y        = NULL,
+      fill     = NULL,
+      caption  = "Source: ACS-5, US Census Bureau"
+    ) +
+    theme_bw() +
+    theme(
+      legend.position    = "bottom",
+      panel.grid.major.y = element_blank()
+    )
+}
+
+
+```
+
+New York is projected to have `r ny_districts_2030` congressional seats in 2030 according to our population projections for the state (~`r comma(round(pop_projections |> filter(year == 2030, state == "New York") |> pull(pop)))`). It is tantalizingly close to a 27th seat with its next seat priority value (`r comma(round(ny_next_seat))`) just 2,293 points below `r seat_435_state`'s 435th seat priority value (`r comma(lowest_allocated)`). This means New York needs only a relatively small net population gain to flip that seat. A rough estimate suggests attracting and retaining around 10,000-15,000 additional residents above the current projection would likely be sufficient to achieve this congressional win for the state.
+
+Below are my proposal on where we can create a promotional campaign that lures potential constituents our way and address the deficit in new New Yorkers. In this I analyze migration flows pertaining to New York state and its three major metro areas, NYC, Buffalo and Rochester.
+
+#### Focus 1: Stem The Flow of Out-Migration
+
+The biggest issue New York faces is population retention. Cost of living in our major metro areas such as NYC has sky rocketed in recent years producing one of the highest median rents in the country. People are possibly leaving for cheaper pastures that stretch the dollar. 
+
+The top states where New Yorkers are escaping to are New Jersey, Florida, Pennsylvania, Texas and Connecticut. Out of all these destination states, New York is a migration net loser meaning more people are leaving New York to that state than people from those states are moving into New York. The biggest hemorrhages are with New Jersey and Florida so we should make these states and the metro areas within them where a significant portion of New Yorkers move to our prime targets.
+
+```{r nys-net-migration-destination-state-plot, echo=FALSE}
+
+top_destination_states_net_plot
+
+```
+
+* **New Jersey**: `r comma(round(top_destinations_ny |> filter(state_current == "New Jersey") |> pull(population)))` leave and `r comma(top_sources_ny |> filter(state_1y == "New Jersey") |> pull(population))` return (net loss of ~`r comma(round(top_destination_states_net |> filter(state == "New Jersey", type == "outflow_neg") |> pull(net)))`). 
+  + NYCers account for over half (`r round(nyc_connection |> slice_max(nyc_share, n=1) |> pull(nyc_share), 1)`%) of migration into the `r nyc_connection |> slice_max(nyc_share, n=1) |> pull(full1_name)`.
+  + `r top_destinations_ny_metro |> filter(str_detect(full2_name, "NJ"), str_detect(full1_name, "Buffalo")) |> pull(full2_name)` Metro Area is a top moving destination for people from NYC, Rochester and Buffalo.
+  
+* **Florida**: `r comma(round(top_destinations_ny |> filter(state_current == "Florida") |> pull(population)))` leave and only `r comma(top_sources_ny |> filter(state_1y == "Florida") |> pull(population))` return (net loss of ~`r comma(round(top_destination_states_net |> filter(state == "Florida", type == "outflow_neg") |> pull(net)))`). 
+  + Miami is the top moving destination for New Yorkers in the NYC metro heading to Florida. NYCers account for `r round(nyc_connection |> filter(str_detect(full1_name, "Miami")) |> pull(nyc_share), 1)`% of Miami's in-migration. 
+  + Tampa is the top moving destination for Buffalo and Rochester residents moving out.
+
+#### Focus 2: Increasing Metro In-Migration
+
+Generally, in-migration to New York is fueled by neighboring northeastern states with significant contributions from California and Florida. Appealing to the distinct cultures smaller urban metro areas that already provide a large source of in-migration may prove an effective strategy to win over more outsiders. 
+
+```{r ny-metro-net-migration-destination-state-plot, echo=FALSE}
+
+plot_metro_sources("Buffalo-Cheektowaga, NY Metro Area")
+plot_metro_sources("Rochester, NY Metro Area")
+
+```
+
+* Philadelphia is the single largest source of in-migration to NYC metro (`r comma(top_sources_ny_metro |> filter(geoid1 == 35620, geoid2 == 37980) |> pull(moved_in))` people) making it a natural target since it's close and culturally similar to New York.
+  + **Advertising Opportunity**: Target Philadelphia with messaging about NYC's larger job market and similar, yet more expansive, cultural scene.
+* Washington DC sends significant flows to all three major NY metros: #2 in NYC (`r comma(top_sources_ny_metro |> filter(geoid1 == 35620, geoid2 == 47900) |> pull(moved_in))`), #1 in Buffalo (`r comma(top_sources_ny_metro |> filter(geoid1 == 15380, geoid2 == 47900) |> pull(moved_in))`), and #4 in Rochester (`r comma(top_sources_ny_metro |> filter(geoid1 == 40380, geoid2 == 47900) |> pull(moved_in))`) . 
+* Boston is a top source for both NYC and Rochester and is home to some of the best universities in America.
+  + **Advertising Opportunity**: Target DC with messaging about New York's unique political position and energy. DC and Boston both may also provide a highly educated professional urban population that would be attracted to New York's abundant job opportunities and growth for young workers. 
+* San Juan, PR is a surprisingly strong source for both Buffalo and Rochester as the #2 source of in-population in both metro areas in addition to a large population presence already in NYC.
+  + **Advertising Opportunity**: Target PR by highlighting the Puerto Rican diaspora and established community in Buffalo and Rochester. Major out-migration from Puerto Rico has been spurred on by lack of job and education opportunities. If upstate metros can establish larger migration patterns of just a few thousand, it would be a game changer for reapportionment.
+
+#### Focus 3: Vulnerable States
+
+Alabama holds the 435th seat with a priority value of 822,578, which is just barely above New York's 27th seat priority value. If New York gains ~10,000-15,000 residents while Alabama loses a similar number, New York can pick up the 27th seat. Other vulnerable single-seat states (where any meaningful out-migration could put their seat at risk) worth monitoring  are:
+
+* Ohio (Priority Value: `r comma(lower_allocation |> filter(state == "Ohio") |> pull(hh_weight))`) 
+* North Carolina (Priority Value: `r comma(lower_allocation |> filter(state == "North Carolina") |> pull(hh_weight))`)
+
+These are states where a targeted advertising campaign pulling even a few thousand residents to New York could have an outsized political impact.
+
+
+#### Proposed State Slogans
+Two different slogans were chosen to appeal to both former New Yorkers we hope will come back home and new New Yorkers looking for fresh opportunity. 
+
+**For Florida/Sun Belt leavers:** *"Done with the heat? Come home to New York."*
+
+Juxtaposed with different pictures of heat damage (sunburn, melted street tar, etc) or other extreme weather damage from tropical storms/hurricanes will remind them New York provides safety and comfort all year round. 
+
+**For Philadelphia/DC/Boston upward bound job seekers:** *"The next step up is always New York."*
+
+
 
 
 ::: {.callout-note title="AI Usage Statement" collapse="true"}
