@@ -1693,7 +1693,7 @@ top_destination_states_net_plot
 
 #### Focus 2: Increasing Metro In-Migration
 
-Generally, in-migration to New York is fueled by neighboring northeastern states with significant contributions from California and Florida. Appealing to the distinct cultures smaller urban metro areas that already provide a large source of in-migration may prove an effective strategy to win over more outsiders. 
+Generally, in-migration to New York is fueled by neighboring northeastern states with significant contributions from California and Florida. Appealing to the distinct cultures of smaller urban metro areas that already provide a large source of in-migration may prove an effective strategy to win over more outsiders. 
 
 ```{r ny-metro-net-migration-destination-state-plot, echo=FALSE}
 
