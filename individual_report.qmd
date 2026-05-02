@@ -1,0 +1,437 @@
+---
+title: "Individual Report"
+author: "Evelyn Rodriguez"
+editor:
+    mode: source
+format:
+    html:
+        toc: true
+        code-fold: true
+        code-summary: "Display Code"
+        code-overflow: wrap
+        code-block-bg: true
+        code-block-border-left: "#6610f2"
+        highlight-style: "a11y"
+---
+
+```{r setup, include=FALSE}
+# ---- Libraries ----
+library(tidyverse)
+library(arrow)
+library(lubridate)
+library(scales)
+library(gt)
+library(plotly)
+library(leaflet)
+library(sf)
+library(patchwork)
+library(glue)
+library(broom)
+```
+
+## Introduction
+
+<!-- 
+WRITING NOTES:
+- Introduce the research question: does adverse weather in NYC affect 311 
+  service request resolution times?
+- Briefly describe the two datasets being used
+- State the time period: January 1, 2022 to December 31, 2025
+- Mention the five boroughs as the geographic scope
+- End with a brief roadmap of what the report covers
+-->
+
+## Data Sources
+
+<!-- 
+WRITING NOTES:
+- Describe NYC 311 Open Data (NYC Open Data / Socrata API)
+  * What it is, who maintains it, what it contains
+  * Link to the dataset: https://data.cityofnewyork.us/resource/erm2-nwe9.json
+  * Note that it covers all 311 service requests from 2020 to present
+  * Explain we filtered to Closed requests between 2022-2025
+  
+- Describe Open-Meteo Historical Archive API
+  * What it is, that it is free and requires no API key
+  * That it uses ERA5 reanalysis model combining satellite, station, and atmospheric data
+  * Link: https://archive-api.open-meteo.com/v1/archive
+  * Note the variables we pulled: temp max/min/avg, precipitation, snowfall, wind speed
+  * Note American units: °F, inches, mph
+  
+- Describe the adverse/extreme weather classification system
+  * Table of thresholds with sources (NWS, NYC OEM)
+  * Explain the Normal/Adverse/Extreme categorization logic
+-->
+
+## Data Acquisition & Preparation
+
+<!-- 
+WRITING NOTES:
+- Explain the fetch_data.R script approach and why data acquisition 
+  lives in a separate script rather than inside the report
+- Describe the Socrata API pagination approach (50,000 rows per page)
+  and why this was necessary given the dataset size
+- Explain the parquet caching strategy and why it was chosen over CSV
+- Document key decisions made during cleaning:
+  * Filtering to Closed status only
+  * Resolution time calculation (closed_date - created_date in hours)
+  * Resolution time bounds (0 to 17,520 hours / 2 years)
+  * Borough standardization to title case
+  * NA assignment for Unspecified borough records
+- Explain the borough-level weather approach:
+  * Why one coordinate per borough rather than a single city-wide point
+  * The representative locations chosen for each borough
+  * The join strategy (borough + date)
+  * Future nearest-neighbor upgrade path
+- Note the columns dropped from the original dataset and why
+  (additional_details and location_type not available via JSON API)
+  
+- The Socrata API and pagination approach
+- The parquet caching strategy
+- Filtering decisions (Closed status, date range)
+- Resolution time calculation and bounds
+- Borough standardization and NA handling
+- Borough-level weather approach and join strategy
+-->
+
+```{r data-acquisition}
+
+## Read the pre-processed parquet files produced by fetch_data.R
+## 
+# Weather data: ~7,300 rows (5 boroughs x 1,461 days)
+weather <- read_parquet("data/individual/weather/weather_clean.parquet")
+
+# Clean 311 data: ~13M rows, may take a moment to load
+nyc_311 <- read_parquet("data/individual/nyc_311_clean.parquet")
+
+# Joined dataset: 311 requests with weather data
+nyc_311_with_weather <- read_parquet("data/individual/nyc_311_with_weather.parquet")
+
+# Validate that data loaded correctly
+glimpse(nyc_311)
+glimpse(weather)
+glimpse(nyc_311_with_weather)
+
+
+```
+
+Created a separate script that is run once manually to download and cache all data into parquet files. Due to high volume of 311 data (~13 million rows), the initial fetch takes around 40 minutes and caching helps prevent running and downloading this data every time a change is made. The parquet files produced sit on disk and this report will just read them in order to perform analysis. 
+
+I chose to use parquet over CSV because CSV files would process slowly and be memory-inefficient as it offers no compression. Parquet, a binary file format designed specifically for large tabular data sets, is a better choice for this particular project. Parquet compression makes file sizes significantly smaller and it preserves data types directly provided by the source API, which means the 13 million row data set loads much faster and uses significantly less memory.
+
+```{r data-prep-summary}
+# Summary statistics of the cleaned datasets to validate acquisition
+# This chunk will display a brief summary table confirming row counts,
+# date ranges, and borough coverage for both datasets
+```
+
+## EDA: NYC 311 Requests & Weather in NYC
+
+### Weather Patterns in NYC (2022–2025)
+
+<!-- 
+WRITING NOTES:
+- This is the EDA section for the weather dataset
+- Guide the reader through what NYC weather actually looked like 
+  over this four-year period before connecting it to 311 data
+-->
+
+#### Adverse and Extreme Weather Days by Borough
+
+<!-- 
+WRITING NOTES:
+- How many Normal, Adverse, and Extreme days occurred per borough?
+- Are there meaningful differences between boroughs in adverse day counts?
+- Note: Bronx max wind = exactly 31mph (our threshold) vs coastal boroughs
+  which saw higher gusts — worth mentioning
+-->
+
+```{r weather-category-by-borough}
+# Bar chart or table: count of Normal/Adverse/Extreme days per borough
+# Use plotly for interactivity
+```
+
+#### Temperature Trends
+
+<!-- 
+WRITING NOTES:
+- Show temperature patterns over the four-year period
+- Highlight notable heat waves and cold snaps
+- Reference the max temperatures observed (103-106°F) and 
+  min temperatures (1-4.5°F)
+-->
+
+```{r temperature-trends}
+# Time series: daily avg temperature by borough over 2022-2025
+# Annotate notable extreme heat and cold periods
+```
+
+#### Precipitation and Snowfall
+
+<!-- 
+WRITING NOTES:
+- Show precipitation and snowfall patterns over the period
+- Total annual precipitation ~50 inches/year — consistent with NYC historical avg
+- Note seasonal patterns and any notable storms
+-->
+
+```{r precipitation-trends}
+# Time series or bar chart: monthly precipitation and snowfall totals
+# Consider showing by borough to highlight coastal vs inland differences
+```
+
+#### Weather Event Calendar
+
+<!-- 
+WRITING NOTES:
+- A visual calendar or heatmap showing weather category by day
+- Helps reader see clustering of adverse/extreme events across the year
+- Could be a useful reference for the analysis section
+-->
+
+```{r weather-calendar}
+# Heatmap: weather category by day of year, faceted by year
+# Shows seasonality of adverse/extreme weather events
+```
+
+### 311 Service Request Overview
+
+<!-- 
+WRITING NOTES:
+- This is the EDA section for the 311 dataset
+- Give the reader a full picture of the 311 data before the analysis
+-->
+
+#### Request Volume
+
+<!-- 
+WRITING NOTES:
+- Total requests by year and borough
+- Are there year-over-year trends in volume?
+- Borough distribution: Brooklyn > Queens > Bronx > Manhattan > Staten Island
+-->
+
+```{r request-volume}
+# Bar chart: total requests by borough and year
+# Use plotly for interactivity
+```
+
+#### Top Complaint Types and Agencies
+
+<!-- 
+WRITING NOTES:
+- Top 20 complaint types by volume
+- Top 10 agencies by volume
+- Note NYPD handles 46% of all requests (noise, parking)
+- Note HPD handles 22% (housing: HEAT/HOT WATER, plumbing)
+- Flag weather-sensitive complaint types for the analysis section:
+  HEAT/HOT WATER, Street Condition, Water System, Missed Collection
+-->
+
+```{r complaint-types}
+# Horizontal bar chart: top 20 complaint types
+# Highlight weather-sensitive types in a different color
+```
+
+```{r agencies}
+# Bar chart: top 10 agencies by request volume
+```
+
+#### Resolution Time Distribution
+
+<!-- 
+WRITING NOTES:
+- Show the overall distribution of resolution times
+- Note the heavy right skew: median 7.36 hrs vs mean 323 hrs
+- Explain why median is more appropriate than mean for this data
+- Introduce the resolution time categories:
+  * Instant: < 1 minute (< 0.017 hrs) — 316,472 records (2.4%)
+  * Fast: 1 minute to 1 hour
+  * Standard: 1 hour to 24 hours
+  * Extended: 1 day to 30 days
+  * Long-term: over 30 days (8.2% of records)
+- Discuss the instant closure finding:
+  * What complaint types and agencies drive them?
+  * Are these automated closures or data entry patterns?
+-->
+
+```{r resolution-distribution}
+# Histogram or density plot of resolution times (log scale)
+# Annotate the median and key percentiles
+```
+
+```{r instant-closures}
+# Table: top complaint types and agencies for sub-1-minute resolutions
+# This sets up the later analysis of whether weather affects instant closure rates
+```
+
+#### Seasonal Patterns
+
+<!-- 
+WRITING NOTES:
+- Do 311 request volumes or resolution times vary by season?
+- Are certain complaint types more seasonal?
+- This provides context for the weather analysis that follows
+-->
+
+```{r seasonal-patterns}
+# Line chart: monthly request volume over 2022-2025
+# Facet or color by complaint type category
+```
+
+### Weather × Resolution Time Analysis
+
+<!-- 
+WRITING NOTES:
+- This is the core analytical section of the report
+- Build from simple to complex findings
+-->
+
+#### Resolution Times by Weather Category
+
+<!-- 
+WRITING NOTES:
+- The central finding: do resolution times differ across Normal/Adverse/Extreme days?
+- Present median resolution times with IQR by weather category
+- Reference the overall pattern before breaking down by borough
+-->
+
+```{r resolution-by-weather}
+# Box plot or violin plot: resolution time distribution by weather category
+# Use log scale on y-axis given the skewed distribution
+```
+
+#### Borough Breakdown
+
+<!-- 
+WRITING NOTES:
+- How does the weather effect vary across boroughs?
+- Key findings from data checks:
+  * Queens baseline: 4.22 hrs (fastest) vs Staten Island: 18.4 hrs (slowest)
+  * Queens Extreme: 8.58 hrs — faster than most boroughs on Normal days
+  * Staten Island Adverse (22.3 hrs) > Extreme (14.5 hrs) — counterintuitive reversal
+- These borough differences are as interesting as the weather effect itself
+-->
+
+```{r resolution-by-borough-weather}
+# Grouped bar chart or heatmap: median resolution time by borough x weather category
+# Use plotly for interactivity
+```
+
+#### Resolution Time Categories × Weather
+
+<!-- 
+WRITING NOTES:
+- Cross-tabulate resolution time categories against weather category
+- Key question: does adverse weather shift the distribution of resolution types?
+- In particular: does extreme weather suppress instant closures while 
+  increasing long-term resolutions?
+- This is the instant closure analysis flagged during data checks
+-->
+
+```{r resolution-categories-weather}
+# Stacked bar chart: proportion of each resolution category by weather category
+# Shows whether the distribution of resolution types shifts with weather
+```
+
+#### Weather-Sensitive Complaint Types
+
+<!-- 
+WRITING NOTES:
+- Focus on complaint types directly linked to weather:
+  HEAT/HOT WATER, Street Condition, Water System, Missed Collection
+- Do these types show stronger weather effects than the overall dataset?
+- Compare resolution times for these types on Normal vs Adverse vs Extreme days
+-->
+
+```{r weather-sensitive-complaints}
+# Faceted bar chart: median resolution time by weather category
+# for weather-sensitive complaint types only
+```
+
+### Statistical Analysis
+
+<!-- 
+WRITING NOTES:
+- Log-transform resolution times to address right skew
+- Run ANOVA testing whether weather category significantly predicts 
+  log-transformed resolution time
+- Follow up with Tukey's HSD post-hoc test to identify which 
+  category pairs differ significantly
+- Report effect sizes alongside p-values
+- Note: results are back-transformed for interpretation in the text
+- Revisit whether ANOVA is the right approach here
+-->
+
+```{r statistical-analysis}
+# Step 1: Log-transform resolution times
+# Step 2: One-way ANOVA: log(resolution_hrs) ~ weather_category
+# Step 3: Tukey's HSD post-hoc test
+# Step 4: Display results in a gt() table
+```
+
+## Interactive Map
+
+<!-- 
+WRITING NOTES:
+- Leaflet map showing median resolution times across NYC
+- Color polygons by median resolution time (green -> amber -> red scale)
+- Layer toggle: Borough / Community District
+- Popup on click: borough name, request count, median resolution time,
+  % of days that were adverse/extreme, top complaint type
+- Explain what the map shows and how to interact with it
+-->
+
+```{r interactive-map}
+# Step 1: Download borough and community district boundary shapefiles
+# Step 2: Aggregate median resolution time and weather stats to each geography
+# Step 3: Build leaflet map with layer toggle
+```
+
+## Conclusions & Limitations
+
+<!-- 
+WRITING NOTES:
+- Summarize the key findings:
+  * Does adverse weather meaningfully affect resolution times?
+  * Which boroughs are most affected?
+  * Which complaint types are most weather-sensitive?
+  * What does the instant closure analysis reveal?
+  
+- Discuss limitations:
+  * One representative weather coordinate per borough — misses within-borough variation
+  * Future nearest-neighbor upgrade path using actual request coordinates
+  * temp_min_f used for cold classification — captures overnight lows 
+    which drive infrastructure stress (pipes, boilers) but may not reflect 
+    daytime conditions
+  * 14,170 records (0.1%) excluded from weather analysis due to missing borough
+  * Median used instead of mean due to right-skewed distribution
+  * ANOVA assumes approximate normality — log transformation applied but 
+    distribution remains imperfect
+    
+- Suggest directions for future analysis:
+  * Nearest-neighbor spatial join for more precise weather matching
+  * Hourly weather data for more granular analysis
+  * Adding more weather coordinates per borough
+-->
+
+
+
+::: {.callout-note title="AI Usage Statement" collapse="true"}
+
+Claude was used to help write the code in this project and brainstorm final deliverable ideas, but all non-code text was generated without the use of any Generative AI tools.\
+
+:::
+
+---
+
+This work ©2025 by Evelyn Rodriguez was initially prepared as a Course Project for
+STA 9750 at Baruch College. More details about this course can be found at
+[the course site](https://michael-weylandt.com/STA9750) and instructions for
+this assignment can be found at 
+[Final Project](https://michael-weylandt.com/STA9750/project.html)
+
+
+
+
+

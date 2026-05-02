@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Evelyn Rodriguez">
+
+<title>Individual Report – STA 9750 Submission Material</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-b754b9fd3853d7e56faef54c29c5d52b.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-1fc03f66f46551413f7442653190dcb8.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">STA 9750 Submission Material</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#data-sources" id="toc-data-sources" class="nav-link" data-scroll-target="#data-sources">Data Sources</a></li>
+  <li><a href="#data-acquisition-preparation" id="toc-data-acquisition-preparation" class="nav-link" data-scroll-target="#data-acquisition-preparation">Data Acquisition &amp; Preparation</a></li>
+  <li><a href="#eda-nyc-311-requests-weather-in-nyc" id="toc-eda-nyc-311-requests-weather-in-nyc" class="nav-link" data-scroll-target="#eda-nyc-311-requests-weather-in-nyc">EDA: NYC 311 Requests &amp; Weather in NYC</a>
+  <ul class="collapse">
+  <li><a href="#weather-patterns-in-nyc-20222025" id="toc-weather-patterns-in-nyc-20222025" class="nav-link" data-scroll-target="#weather-patterns-in-nyc-20222025">Weather Patterns in NYC (2022–2025)</a></li>
+  <li><a href="#service-request-overview" id="toc-service-request-overview" class="nav-link" data-scroll-target="#service-request-overview">311 Service Request Overview</a></li>
+  <li><a href="#weather-resolution-time-analysis" id="toc-weather-resolution-time-analysis" class="nav-link" data-scroll-target="#weather-resolution-time-analysis">Weather × Resolution Time Analysis</a></li>
+  <li><a href="#statistical-analysis" id="toc-statistical-analysis" class="nav-link" data-scroll-target="#statistical-analysis">Statistical Analysis</a></li>
+  </ul></li>
+  <li><a href="#interactive-map" id="toc-interactive-map" class="nav-link" data-scroll-target="#interactive-map">Interactive Map</a></li>
+  <li><a href="#conclusions-limitations" id="toc-conclusions-limitations" class="nav-link" data-scroll-target="#conclusions-limitations">Conclusions &amp; Limitations</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Individual Report</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Evelyn Rodriguez </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<!-- 
+WRITING NOTES:
+- Introduce the research question: does adverse weather in NYC affect 311 
+  service request resolution times?
+- Briefly describe the two datasets being used
+- State the time period: January 1, 2022 to December 31, 2025
+- Mention the five boroughs as the geographic scope
+- End with a brief roadmap of what the report covers
+-->
+</section>
+<section id="data-sources" class="level2">
+<h2 class="anchored" data-anchor-id="data-sources">Data Sources</h2>
+<!-- 
+WRITING NOTES:
+- Describe NYC 311 Open Data (NYC Open Data / Socrata API)
+  * What it is, who maintains it, what it contains
+  * Link to the dataset: https://data.cityofnewyork.us/resource/erm2-nwe9.json
+  * Note that it covers all 311 service requests from 2020 to present
+  * Explain we filtered to Closed requests between 2022-2025
+  
+- Describe Open-Meteo Historical Archive API
+  * What it is, that it is free and requires no API key
+  * That it uses ERA5 reanalysis model combining satellite, station, and atmospheric data
+  * Link: https://archive-api.open-meteo.com/v1/archive
+  * Note the variables we pulled: temp max/min/avg, precipitation, snowfall, wind speed
+  * Note American units: °F, inches, mph
+  
+- Describe the adverse/extreme weather classification system
+  * Table of thresholds with sources (NWS, NYC OEM)
+  * Explain the Normal/Adverse/Extreme categorization logic
+-->
+</section>
+<section id="data-acquisition-preparation" class="level2">
+<h2 class="anchored" data-anchor-id="data-acquisition-preparation">Data Acquisition &amp; Preparation</h2>
+<!-- 
+WRITING NOTES:
+- Explain the fetch_data.R script approach and why data acquisition 
+  lives in a separate script rather than inside the report
+- Describe the Socrata API pagination approach (50,000 rows per page)
+  and why this was necessary given the dataset size
+- Explain the parquet caching strategy and why it was chosen over CSV
+- Document key decisions made during cleaning:
+  * Filtering to Closed status only
+  * Resolution time calculation (closed_date - created_date in hours)
+  * Resolution time bounds (0 to 17,520 hours / 2 years)
+  * Borough standardization to title case
+  * NA assignment for Unspecified borough records
+- Explain the borough-level weather approach:
+  * Why one coordinate per borough rather than a single city-wide point
+  * The representative locations chosen for each borough
+  * The join strategy (borough + date)
+  * Future nearest-neighbor upgrade path
+- Note the columns dropped from the original dataset and why
+  (additional_details and location_type not available via JSON API)
+  
+- The Socrata API and pagination approach
+- The parquet caching strategy
+- Filtering decisions (Closed status, date range)
+- Resolution time calculation and bounds
+- Borough standardization and NA handling
+- Borough-level weather approach and join strategy
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Read the pre-processed parquet files produced by fetch_data.R</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="do">## </span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Weather data: ~7,300 rows (5 boroughs x 1,461 days)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>weather <span class="ot">&lt;-</span> <span class="fu">read_parquet</span>(<span class="st">"data/individual/weather/weather_clean.parquet"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean 311 data: ~13M rows, may take a moment to load</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>nyc_311 <span class="ot">&lt;-</span> <span class="fu">read_parquet</span>(<span class="st">"data/individual/nyc_311_clean.parquet"</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Joined dataset: 311 requests with weather data</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>nyc_311_with_weather <span class="ot">&lt;-</span> <span class="fu">read_parquet</span>(<span class="st">"data/individual/nyc_311_with_weather.parquet"</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate that data loaded correctly</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(nyc_311)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 13,195,984
+Columns: 18
+$ unique_key               &lt;chr&gt; "52940375", "52934953", "52933158", "52938624…
+$ date                     &lt;date&gt; 2022-01-01, 2022-01-01, 2022-01-01, 2022-01-…
+$ created_date             &lt;dttm&gt; 2022-01-01 00:00:00, 2022-01-01 00:00:10, 20…
+$ closed_date              &lt;dttm&gt; 2022-01-03 08:39:00, 2022-01-01 01:00:11, 20…
+$ resolution_hrs           &lt;dbl&gt; 56.65000000, 1.00027778, 0.95694444, 0.295833…
+$ agency                   &lt;chr&gt; "DEP", "NYPD", "NYPD", "NYPD", "NYPD", "NYPD"…
+$ agency_name              &lt;chr&gt; "Department of Environmental Protection", "Ne…
+$ complaint_type           &lt;chr&gt; "Air Quality", "Noise - Street/Sidewalk", "No…
+$ descriptor               &lt;chr&gt; "Air: Odor/Fumes, Vehicle Idling (AD3)", "Lou…
+$ resolution_description   &lt;chr&gt; "The Department of Environmental Protection d…
+$ borough                  &lt;chr&gt; "Manhattan", "Brooklyn", "Brooklyn", "Manhatt…
+$ community_board          &lt;chr&gt; "05 MANHATTAN", "01 BROOKLYN", "11 BROOKLYN",…
+$ community_district_num   &lt;int&gt; 5, 1, 11, 7, 4, 10, 18, 7, 3, 14, 18, 5, 14, …
+$ incident_zip             &lt;chr&gt; "10036", "11222", "11214", "10025", "10456", …
+$ latitude                 &lt;dbl&gt; 40.75666, 40.72314, 40.59747, 40.80256, 40.82…
+$ longitude                &lt;dbl&gt; -73.99019, -73.94366, -73.98886, -73.96418, -…
+$ x_coordinate_state_plane &lt;dbl&gt; 986967, 999866, 987344, 994168, 1006601, 9980…
+$ y_coordinate_state_plane &lt;dbl&gt; 214950, 202742, 156952, 231674, 241609, 23129…</code></pre>
+</div>
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(weather)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 7,305
+Columns: 16
+$ borough            &lt;chr&gt; "Manhattan", "Manhattan", "Manhattan", "Manhattan",…
+$ date               &lt;date&gt; 2022-01-01, 2022-01-02, 2022-01-03, 2022-01-04, 20…
+$ temp_max_f         &lt;dbl&gt; 53.3, 55.8, 35.8, 33.5, 44.7, 39.7, 32.2, 26.2, 39.…
+$ temp_min_f         &lt;dbl&gt; 45.8, 37.0, 24.3, 20.2, 28.5, 30.9, 22.0, 17.1, 22.…
+$ temp_avg_f         &lt;dbl&gt; 49.5, 49.1, 29.7, 26.4, 35.6, 35.3, 29.0, 21.2, 32.…
+$ precip_in          &lt;dbl&gt; 0.764, 0.630, 0.055, 0.000, 0.020, 0.000, 0.354, 0.…
+$ snowfall_in        &lt;dbl&gt; 0.000, 0.000, 0.386, 0.000, 0.000, 0.000, 2.480, 0.…
+$ windspeed_mph      &lt;dbl&gt; 8.6, 15.6, 18.2, 12.4, 13.5, 12.5, 16.6, 13.4, 14.8…
+$ is_heavy_rain      &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+$ is_heat            &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+$ is_cold            &lt;lgl&gt; FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE,…
+$ is_snow            &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FAL…
+$ is_high_wind       &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+$ hazard_count       &lt;int&gt; 0, 0, 1, 1, 0, 0, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 2, …
+$ weather_category   &lt;ord&gt; Normal, Normal, Adverse, Adverse, Normal, Normal, E…
+$ dominant_condition &lt;chr&gt; "Clear", "Clear", "Extreme Cold", "Extreme Cold", "…</code></pre>
+</div>
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(nyc_311_with_weather)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 13,195,984
+Columns: 27
+$ unique_key               &lt;chr&gt; "52940375", "52934953", "52933158", "52938624…
+$ date                     &lt;date&gt; 2022-01-01, 2022-01-01, 2022-01-01, 2022-01-…
+$ created_date             &lt;dttm&gt; 2022-01-01 00:00:00, 2022-01-01 00:00:10, 20…
+$ closed_date              &lt;dttm&gt; 2022-01-03 08:39:00, 2022-01-01 01:00:11, 20…
+$ resolution_hrs           &lt;dbl&gt; 56.65000000, 1.00027778, 0.95694444, 0.295833…
+$ agency                   &lt;chr&gt; "DEP", "NYPD", "NYPD", "NYPD", "NYPD", "NYPD"…
+$ agency_name              &lt;chr&gt; "Department of Environmental Protection", "Ne…
+$ complaint_type           &lt;chr&gt; "Air Quality", "Noise - Street/Sidewalk", "No…
+$ descriptor               &lt;chr&gt; "Air: Odor/Fumes, Vehicle Idling (AD3)", "Lou…
+$ resolution_description   &lt;chr&gt; "The Department of Environmental Protection d…
+$ borough                  &lt;chr&gt; "Manhattan", "Brooklyn", "Brooklyn", "Manhatt…
+$ community_board          &lt;chr&gt; "05 MANHATTAN", "01 BROOKLYN", "11 BROOKLYN",…
+$ community_district_num   &lt;int&gt; 5, 1, 11, 7, 4, 10, 18, 7, 3, 14, 18, 5, 14, …
+$ incident_zip             &lt;chr&gt; "10036", "11222", "11214", "10025", "10456", …
+$ latitude                 &lt;dbl&gt; 40.75666, 40.72314, 40.59747, 40.80256, 40.82…
+$ longitude                &lt;dbl&gt; -73.99019, -73.94366, -73.98886, -73.96418, -…
+$ x_coordinate_state_plane &lt;dbl&gt; 986967, 999866, 987344, 994168, 1006601, 9980…
+$ y_coordinate_state_plane &lt;dbl&gt; 214950, 202742, 156952, 231674, 241609, 23129…
+$ temp_max_f               &lt;dbl&gt; 53.3, 53.5, 53.5, 53.3, 53.3, 53.3, 53.5, 53.…
+$ temp_min_f               &lt;dbl&gt; 45.8, 46.0, 46.0, 45.8, 46.2, 45.8, 46.0, 45.…
+$ temp_avg_f               &lt;dbl&gt; 49.5, 50.3, 50.3, 49.5, 49.8, 49.5, 50.3, 49.…
+$ precip_in                &lt;dbl&gt; 0.764, 0.681, 0.681, 0.764, 0.756, 0.764, 0.6…
+$ snowfall_in              &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ windspeed_mph            &lt;dbl&gt; 8.6, 8.8, 8.8, 8.6, 8.6, 8.6, 8.8, 8.6, 10.2,…
+$ weather_category         &lt;ord&gt; Normal, Normal, Normal, Normal, Normal, Norma…
+$ dominant_condition       &lt;chr&gt; "Clear", "Clear", "Clear", "Clear", "Clear", …
+$ hazard_count             &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …</code></pre>
+</div>
+</div>
+<p>Created a separate script that is run once manually to download and cache all data into parquet files. Due to high volume of 311 data (~13 million rows), the initial fetch takes around 40 minutes and caching helps prevent running and downloading this data every time a change is made. The parquet files produced sit on disk and this report will just read them in order to perform analysis.</p>
+<p>I chose to use parquet over CSV because CSV files would process slowly and be memory-inefficient as it offers no compression. Parquet, a binary file format designed specifically for large tabular data sets, is a better choice for this particular project. Parquet compression makes file sizes significantly smaller and it preserves data types directly provided by the source API, which means the 13 million row data set loads much faster and uses significantly less memory.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Summary statistics of the cleaned datasets to validate acquisition</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># This chunk will display a brief summary table confirming row counts,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># date ranges, and borough coverage for both datasets</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="eda-nyc-311-requests-weather-in-nyc" class="level2">
+<h2 class="anchored" data-anchor-id="eda-nyc-311-requests-weather-in-nyc">EDA: NYC 311 Requests &amp; Weather in NYC</h2>
+<section id="weather-patterns-in-nyc-20222025" class="level3">
+<h3 class="anchored" data-anchor-id="weather-patterns-in-nyc-20222025">Weather Patterns in NYC (2022–2025)</h3>
+<!-- 
+WRITING NOTES:
+- This is the EDA section for the weather dataset
+- Guide the reader through what NYC weather actually looked like 
+  over this four-year period before connecting it to 311 data
+-->
+<section id="adverse-and-extreme-weather-days-by-borough" class="level4">
+<h4 class="anchored" data-anchor-id="adverse-and-extreme-weather-days-by-borough">Adverse and Extreme Weather Days by Borough</h4>
+<!-- 
+WRITING NOTES:
+- How many Normal, Adverse, and Extreme days occurred per borough?
+- Are there meaningful differences between boroughs in adverse day counts?
+- Note: Bronx max wind = exactly 31mph (our threshold) vs coastal boroughs
+  which saw higher gusts — worth mentioning
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Bar chart or table: count of Normal/Adverse/Extreme days per borough</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Use plotly for interactivity</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="temperature-trends" class="level4">
+<h4 class="anchored" data-anchor-id="temperature-trends">Temperature Trends</h4>
+<!-- 
+WRITING NOTES:
+- Show temperature patterns over the four-year period
+- Highlight notable heat waves and cold snaps
+- Reference the max temperatures observed (103-106°F) and 
+  min temperatures (1-4.5°F)
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Time series: daily avg temperature by borough over 2022-2025</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Annotate notable extreme heat and cold periods</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="precipitation-and-snowfall" class="level4">
+<h4 class="anchored" data-anchor-id="precipitation-and-snowfall">Precipitation and Snowfall</h4>
+<!-- 
+WRITING NOTES:
+- Show precipitation and snowfall patterns over the period
+- Total annual precipitation ~50 inches/year — consistent with NYC historical avg
+- Note seasonal patterns and any notable storms
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Time series or bar chart: monthly precipitation and snowfall totals</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Consider showing by borough to highlight coastal vs inland differences</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="weather-event-calendar" class="level4">
+<h4 class="anchored" data-anchor-id="weather-event-calendar">Weather Event Calendar</h4>
+<!-- 
+WRITING NOTES:
+- A visual calendar or heatmap showing weather category by day
+- Helps reader see clustering of adverse/extreme events across the year
+- Could be a useful reference for the analysis section
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Heatmap: weather category by day of year, faceted by year</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Shows seasonality of adverse/extreme weather events</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+</section>
+<section id="service-request-overview" class="level3">
+<h3 class="anchored" data-anchor-id="service-request-overview">311 Service Request Overview</h3>
+<!-- 
+WRITING NOTES:
+- This is the EDA section for the 311 dataset
+- Give the reader a full picture of the 311 data before the analysis
+-->
+<section id="request-volume" class="level4">
+<h4 class="anchored" data-anchor-id="request-volume">Request Volume</h4>
+<!-- 
+WRITING NOTES:
+- Total requests by year and borough
+- Are there year-over-year trends in volume?
+- Borough distribution: Brooklyn > Queens > Bronx > Manhattan > Staten Island
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Bar chart: total requests by borough and year</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Use plotly for interactivity</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="top-complaint-types-and-agencies" class="level4">
+<h4 class="anchored" data-anchor-id="top-complaint-types-and-agencies">Top Complaint Types and Agencies</h4>
+<!-- 
+WRITING NOTES:
+- Top 20 complaint types by volume
+- Top 10 agencies by volume
+- Note NYPD handles 46% of all requests (noise, parking)
+- Note HPD handles 22% (housing: HEAT/HOT WATER, plumbing)
+- Flag weather-sensitive complaint types for the analysis section:
+  HEAT/HOT WATER, Street Condition, Water System, Missed Collection
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Horizontal bar chart: top 20 complaint types</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Highlight weather-sensitive types in a different color</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Bar chart: top 10 agencies by request volume</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="resolution-time-distribution" class="level4">
+<h4 class="anchored" data-anchor-id="resolution-time-distribution">Resolution Time Distribution</h4>
+<!-- 
+WRITING NOTES:
+- Show the overall distribution of resolution times
+- Note the heavy right skew: median 7.36 hrs vs mean 323 hrs
+- Explain why median is more appropriate than mean for this data
+- Introduce the resolution time categories:
+  * Instant: < 1 minute (< 0.017 hrs) — 316,472 records (2.4%)
+  * Fast: 1 minute to 1 hour
+  * Standard: 1 hour to 24 hours
+  * Extended: 1 day to 30 days
+  * Long-term: over 30 days (8.2% of records)
+- Discuss the instant closure finding:
+  * What complaint types and agencies drive them?
+  * Are these automated closures or data entry patterns?
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Histogram or density plot of resolution times (log scale)</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Annotate the median and key percentiles</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Table: top complaint types and agencies for sub-1-minute resolutions</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="co"># This sets up the later analysis of whether weather affects instant closure rates</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="seasonal-patterns" class="level4">
+<h4 class="anchored" data-anchor-id="seasonal-patterns">Seasonal Patterns</h4>
+<!-- 
+WRITING NOTES:
+- Do 311 request volumes or resolution times vary by season?
+- Are certain complaint types more seasonal?
+- This provides context for the weather analysis that follows
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Line chart: monthly request volume over 2022-2025</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Facet or color by complaint type category</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+</section>
+<section id="weather-resolution-time-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="weather-resolution-time-analysis">Weather × Resolution Time Analysis</h3>
+<!-- 
+WRITING NOTES:
+- This is the core analytical section of the report
+- Build from simple to complex findings
+-->
+<section id="resolution-times-by-weather-category" class="level4">
+<h4 class="anchored" data-anchor-id="resolution-times-by-weather-category">Resolution Times by Weather Category</h4>
+<!-- 
+WRITING NOTES:
+- The central finding: do resolution times differ across Normal/Adverse/Extreme days?
+- Present median resolution times with IQR by weather category
+- Reference the overall pattern before breaking down by borough
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Box plot or violin plot: resolution time distribution by weather category</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Use log scale on y-axis given the skewed distribution</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="borough-breakdown" class="level4">
+<h4 class="anchored" data-anchor-id="borough-breakdown">Borough Breakdown</h4>
+<!-- 
+WRITING NOTES:
+- How does the weather effect vary across boroughs?
+- Key findings from data checks:
+  * Queens baseline: 4.22 hrs (fastest) vs Staten Island: 18.4 hrs (slowest)
+  * Queens Extreme: 8.58 hrs — faster than most boroughs on Normal days
+  * Staten Island Adverse (22.3 hrs) > Extreme (14.5 hrs) — counterintuitive reversal
+- These borough differences are as interesting as the weather effect itself
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Grouped bar chart or heatmap: median resolution time by borough x weather category</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Use plotly for interactivity</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="resolution-time-categories-weather" class="level4">
+<h4 class="anchored" data-anchor-id="resolution-time-categories-weather">Resolution Time Categories × Weather</h4>
+<!-- 
+WRITING NOTES:
+- Cross-tabulate resolution time categories against weather category
+- Key question: does adverse weather shift the distribution of resolution types?
+- In particular: does extreme weather suppress instant closures while 
+  increasing long-term resolutions?
+- This is the instant closure analysis flagged during data checks
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Stacked bar chart: proportion of each resolution category by weather category</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Shows whether the distribution of resolution types shifts with weather</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="weather-sensitive-complaint-types" class="level4">
+<h4 class="anchored" data-anchor-id="weather-sensitive-complaint-types">Weather-Sensitive Complaint Types</h4>
+<!-- 
+WRITING NOTES:
+- Focus on complaint types directly linked to weather:
+  HEAT/HOT WATER, Street Condition, Water System, Missed Collection
+- Do these types show stronger weather effects than the overall dataset?
+- Compare resolution times for these types on Normal vs Adverse vs Extreme days
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Faceted bar chart: median resolution time by weather category</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="co"># for weather-sensitive complaint types only</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+</section>
+<section id="statistical-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="statistical-analysis">Statistical Analysis</h3>
+<!-- 
+WRITING NOTES:
+- Log-transform resolution times to address right skew
+- Run ANOVA testing whether weather category significantly predicts 
+  log-transformed resolution time
+- Follow up with Tukey's HSD post-hoc test to identify which 
+  category pairs differ significantly
+- Report effect sizes alongside p-values
+- Note: results are back-transformed for interpretation in the text
+- Revisit whether ANOVA is the right approach here
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 1: Log-transform resolution times</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 2: One-way ANOVA: log(resolution_hrs) ~ weather_category</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 3: Tukey's HSD post-hoc test</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 4: Display results in a gt() table</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+</section>
+<section id="interactive-map" class="level2">
+<h2 class="anchored" data-anchor-id="interactive-map">Interactive Map</h2>
+<!-- 
+WRITING NOTES:
+- Leaflet map showing median resolution times across NYC
+- Color polygons by median resolution time (green -> amber -> red scale)
+- Layer toggle: Borough / Community District
+- Popup on click: borough name, request count, median resolution time,
+  % of days that were adverse/extreme, top complaint type
+- Explain what the map shows and how to interact with it
+-->
+<div class="cell">
+<details class="code-fold">
+<summary>Display Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 1: Download borough and community district boundary shapefiles</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 2: Aggregate median resolution time and weather stats to each geography</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 3: Build leaflet map with layer toggle</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="conclusions-limitations" class="level2">
+<h2 class="anchored" data-anchor-id="conclusions-limitations">Conclusions &amp; Limitations</h2>
+<!-- 
+WRITING NOTES:
+- Summarize the key findings:
+  * Does adverse weather meaningfully affect resolution times?
+  * Which boroughs are most affected?
+  * Which complaint types are most weather-sensitive?
+  * What does the instant closure analysis reveal?
+  
+- Discuss limitations:
+  * One representative weather coordinate per borough — misses within-borough variation
+  * Future nearest-neighbor upgrade path using actual request coordinates
+  * temp_min_f used for cold classification — captures overnight lows 
+    which drive infrastructure stress (pipes, boilers) but may not reflect 
+    daytime conditions
+  * 14,170 records (0.1%) excluded from weather analysis due to missing borough
+  * Median used instead of mean due to right-skewed distribution
+  * ANOVA assumes approximate normality — log transformation applied but 
+    distribution remains imperfect
+    
+- Suggest directions for future analysis:
+  * Nearest-neighbor spatial join for more precise weather matching
+  * Hourly weather data for more granular analysis
+  * Adding more weather coordinates per borough
+-->
+<div class="callout callout-style-default callout-note callout-titled" title="AI Usage Statement">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>AI Usage Statement
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Claude was used to help write the code in this project and brainstorm final deliverable ideas, but all non-code text was generated without the use of any Generative AI tools.<br>
+</p>
+</div>
+</div>
+</div>
+<hr>
+<p>This work ©2025 by Evelyn Rodriguez was initially prepared as a Course Project for STA 9750 at Baruch College. More details about this course can be found at <a href="https://michael-weylandt.com/STA9750">the course site</a> and instructions for this assignment can be found at <a href="https://michael-weylandt.com/STA9750/project.html">Final Project</a></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/er0driguez\.github\.io\/STA9750-2026-SPRING\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
