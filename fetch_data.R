@@ -4,8 +4,9 @@
 # Downloads and caches all data needed for individual_report.qmd:
 #   1. NYC 311 Closed Service Requests (2022-2025) via Socrata API
 #   2. NYC Historical Weather (2022-2025) via Open-Meteo Archive API
-#      — one API call per borough, results stacked into one tidy table
-#   3. Joins both datasets on borough + date
+#      — one API call per weather point (16 points across 5 boroughs)
+#   3. Spatial nearest-neighbor join: each 311 request is matched to the
+#      closest weather point within its borough using sf::st_nearest_feature()
 #
 # HOW TO USE:
 #   Run this script ONCE manually from the RStudio console before rendering:
@@ -17,14 +18,8 @@
 # OUTPUT FILES (all saved to data/individual/):
 #   311/raw/page_0001.parquet ... page_NNNN.parquet  <- raw API pages
 #   311/nyc_311_clean.parquet                        <- cleaned 311 data
-#   weather/weather_clean.parquet                    <- borough-level weather
+#   weather/weather_clean.parquet                    <- 16-point weather data
 #   nyc_311_with_weather.parquet                     <- 311 + weather joined
-#
-# FUTURE EXTENSION — NEAREST NEIGHBOR JOIN:
-#   The BOROUGH_COORDS table is structured so additional coordinates per
-#   borough can be added as rows. When ready to switch to a nearest-neighbor
-#   spatial join using sf::st_join(), only the join step in Part 3 needs
-#   to be updated — the weather fetch requires no structural changes.
 # =============================================================================
 
 library(tidyverse)
@@ -32,10 +27,11 @@ library(httr2)
 library(arrow)
 library(janitor)
 library(lubridate)
+library(sf)
 
 # =============================================================================
 # CONFIGURATION
-# All constants in one place
+# All constants in one place — change dates, coordinates, or thresholds here
 # =============================================================================
 
 DATE_START <- "2022-01-01"
@@ -48,16 +44,27 @@ PAGE_SIZE   <- 50000L  # Max rows per request; Socrata hard limit is 50,000
 # Open-Meteo historical archive API — no key required
 OPENMETEO_URL <- "https://archive-api.open-meteo.com/v1/archive"
 
-# One representative coordinate per borough
-# Each row is one weather location; borough column links to 311 data
-# To add more points per borough later, simply add rows to this table
+# 16 weather coordinate points spread geographically across all 5 boroughs
+# point_id uniquely identifies each location for the nearest-neighbor join
+# To add more points later, simply add rows to this table
 BOROUGH_COORDS <- tribble(
-  ~borough,         ~lat,     ~lon,
-  "Manhattan",      40.7829, -73.9654,  # Central Park
-  "Brooklyn",       40.6602, -73.9690,  # Prospect Park
-  "Queens",         40.7282, -73.8456,  # Flushing Meadows
-  "Bronx",          40.8448, -73.8648,  # Bronx Park
-  "Staten Island",  40.5795, -74.1502   # Geographic center
+  ~borough,         ~point_id,              ~lat,     ~lon,
+  "Manhattan",      "manhattan_north",      40.8676, -73.9218,  # Inwood/Washington Heights
+  "Manhattan",      "manhattan_center",     40.7829, -73.9654,  # Central Park
+  "Manhattan",      "manhattan_south",      40.7128, -74.0059,  # City Hall
+  "Brooklyn",       "brooklyn_north",       40.7282, -73.9442,  # Greenpoint
+  "Brooklyn",       "brooklyn_center",      40.6602, -73.9690,  # Prospect Park
+  "Brooklyn",       "brooklyn_south",       40.5921, -73.9468,  # Sheepshead Bay
+  "Bronx",          "bronx_north",          40.8952, -73.8751,  # Woodlawn/Norwood
+  "Bronx",          "bronx_center",         40.8448, -73.8648,  # Bronx Park
+  "Bronx",          "bronx_south",          40.8034, -73.9271,  # Mott Haven
+  "Queens",         "queens_west",          40.7447, -73.9485,  # Long Island City
+  "Queens",         "queens_center",        40.7282, -73.8456,  # Flushing Meadows
+  "Queens",         "queens_east",          40.7027, -73.7887,  # Jamaica
+  "Queens",         "queens_south",         40.6413, -73.7781,  # JFK/Rockaway
+  "Staten Island",  "staten_island_north",  40.633019, -74.092368,  # Tompkinsville
+  "Staten Island",  "staten_island_center", 40.5795,   -74.1502,    # Geographic center
+  "Staten Island",  "staten_island_south",  40.522750, -74.216944   # Pleasant Plains
 )
 
 # Adverse/extreme weather thresholds (NWS and NYC OEM standards)
@@ -263,20 +270,17 @@ fetch_311_data <- function() {
 # =============================================================================
 # PART 2: FETCH WEATHER DATA
 # =============================================================================
-# We make one API call per borough rather than a single multi-coordinate call.
-# This avoids an httr2 URL-encoding issue where commas in coordinate lists
-# get encoded as %2C, which the Open-Meteo API rejects with a 400 error.
-# Five small calls is negligible — the weather data is tiny (~1,461 rows each).
-# Results are stacked into one tidy tibble with a borough column for joining.
+# One API call per weather point (16 total across 5 boroughs).
+# Each point gets 1,461 daily rows tagged with its point_id and borough.
+# Results are stacked into one tidy tibble: 16 x 1,461 = 23,376 rows total.
 # All units are American: °F, inches, mph.
 # =============================================================================
 
-# Fetch and classify weather for one borough given its coordinates
+# Fetch and classify weather for one coordinate point
 # Called once per row in BOROUGH_COORDS via pmap() in fetch_weather_data()
-fetch_one_borough_weather <- function(borough, lat, lon) {
+fetch_one_point_weather <- function(borough, point_id, lat, lon) {
   
-  message(sprintf("   Fetching weather for %s (%.4f, %.4f)...",
-                  borough, lat, lon))
+  message(sprintf("   Fetching weather for %s (%s)...", point_id, borough))
   
   resp <- request(OPENMETEO_URL) |>
     req_url_query(
@@ -294,8 +298,11 @@ fetch_one_borough_weather <- function(borough, lat, lon) {
       windspeed_unit     = "mph",         # miles per hour
       precipitation_unit = "inch"         # inches
     ) |>
-    req_retry(max_tries = 3, backoff = \(x) 5) |>
+    req_retry(max_tries = 5, backoff = \(x) 30) |>
     req_perform()
+  
+  # Pause between API calls to respect Open-Meteo rate limits
+  Sys.sleep(2)
   
   raw <- resp |> resp_body_json(simplifyVector = TRUE)
   
@@ -314,8 +321,9 @@ fetch_one_borough_weather <- function(borough, lat, lon) {
       # Coerce to plain numeric and parse date in one mutate block
       across(c(temp_max_f, temp_min_f, temp_avg_f,
                precip_in, snowfall_in, windspeed_mph), as.numeric),
-      borough = borough,
-      date    = as.Date(as.character(date)),
+      borough  = borough,
+      point_id = point_id,
+      date     = as.Date(as.character(date)),
       
       # Replace NA precipitation/snowfall with 0 — no data means no precip
       across(c(precip_in, snowfall_in), \(x) replace_na(x, 0)),
@@ -352,8 +360,8 @@ fetch_one_borough_weather <- function(borough, lat, lon) {
         TRUE          ~ "Clear"
       )
     ) |>
-    # Put borough first for readability
-    select(borough, date, everything())
+    # Put identifiers first for readability
+    select(borough, point_id, date, everything())
 }
 
 fetch_weather_data <- function() {
@@ -364,22 +372,21 @@ fetch_weather_data <- function() {
     return(invisible(NULL))
   }
   
-  message("\n== PART 2: Downloading NYC borough-level weather data ==")
+  message("\n== PART 2: Downloading NYC weather data (16 points) ==")
   message("   Source: Open-Meteo Historical Archive API")
-  message("   Boroughs: ", paste(BOROUGH_COORDS$borough, collapse = ", "))
   message(sprintf("   Date range: %s to %s", DATE_START, DATE_END))
   message("   Units: °F, inches, mph\n")
   
-  # pmap() loops over each row of BOROUGH_COORDS, passing borough, lat, lon
-  # as named arguments to fetch_one_borough_weather() — one API call per borough
-  # bind_rows() stacks all five results into one tidy tibble
-  weather <- pmap(BOROUGH_COORDS, fetch_one_borough_weather) |>
+  # pmap() loops over each row of BOROUGH_COORDS, passing borough, point_id,
+  # lat, lon as named arguments to fetch_one_point_weather()
+  # bind_rows() stacks all 16 results into one tidy tibble
+  weather <- pmap(BOROUGH_COORDS, fetch_one_point_weather) |>
     bind_rows()
   
   write_parquet(weather, PATH_WEATHER)
   message(sprintf(
-    "\n   Weather data saved: %d boroughs x %d days = %d rows -> %s\n",
-    n_distinct(weather$borough),
+    "\n   Weather data saved: %d points x %d days = %d rows -> %s\n",
+    n_distinct(weather$point_id),
     n_distinct(weather$date),
     nrow(weather),
     PATH_WEATHER
@@ -389,16 +396,24 @@ fetch_weather_data <- function() {
 }
 
 # =============================================================================
-# PART 3: JOIN 311 + WEATHER
+# PART 3: NEAREST-NEIGHBOR SPATIAL JOIN
 # =============================================================================
-# Each 311 request is matched to the weather data for its borough on the
-# date it was created. Records with a missing borough get NA weather fields
-# rather than a false match.
+# Instead of joining on borough + date, we match each 311 request to the
+# closest weather coordinate point WITHIN ITS BOROUGH using sf spatial tools.
 #
-# FUTURE NEAREST-NEIGHBOR UPGRADE:
-# When ready, replace this left_join() with an sf::st_join() that matches
-# each 311 request's lat/lon to the nearest weather coordinate point. The
-# BOROUGH_COORDS table and weather parquet require no structural changes.
+# The join works in three steps:
+#   Step 1 — Build a point_id lookup table:
+#            For each unique 311 lat/lon, find the nearest weather point
+#            within the same borough. This produces a small lookup tibble
+#            mapping (latitude, longitude) -> point_id. The heavy spatial
+#            computation happens here on unique coordinates only.
+#
+#   Step 2 — Attach point_id to all 311 requests via a simple join on
+#            latitude + longitude. No spatial math on 13M rows.
+#
+#   Step 3 — Join weather data using point_id + date.
+#
+# Records with missing coordinates or borough get NA weather fields.
 # =============================================================================
 
 build_joined_data <- function() {
@@ -409,7 +424,6 @@ build_joined_data <- function() {
     return(invisible(NULL))
   }
   
-  # Both clean parquets must exist before we can join
   if (!file.exists(PATH_311_CLEAN)) {
     stop("Clean 311 parquet not found. Run fetch_311_data() first.")
   }
@@ -417,34 +431,89 @@ build_joined_data <- function() {
     stop("Weather parquet not found. Run fetch_weather_data() first.")
   }
   
-  message("\n== PART 3: Joining 311 and weather data ==")
-  message("   Join key: borough + date")
-  message("   Records with missing borough will have NA weather fields\n")
+  message("\n== PART 3: Nearest-neighbor spatial join ==")
   
   nyc_311 <- read_parquet(PATH_311_CLEAN)
   weather  <- read_parquet(PATH_WEATHER)
   
-  # Left join on borough + date — every 311 request is kept
-  # Requests with NA borough won't match any weather row -> weather cols = NA
-  nyc_311_with_weather <- nyc_311 |>
+  # ---- Step 1: Build point_id lookup from unique 311 coordinates ----
+  message("   Building coordinate lookup table...")
+  
+  # Extract unique lat/lon pairs that have both coordinates and a borough
+  # This is far smaller than 13M rows — typically a few hundred thousand unique points
+  unique_coords <- nyc_311 |>
+    filter(!is.na(latitude), !is.na(longitude), !is.na(borough)) |>
+    distinct(borough, latitude, longitude)
+  
+  message(sprintf("   Unique coordinate pairs: %s", scales::comma(nrow(unique_coords))))
+  
+  # Convert unique 311 coordinates to sf points (WGS84 / EPSG:4326)
+  # Retain latitude and longitude as plain columns before converting —
+  # st_as_sf() consumes them into the geometry object and st_drop_geometry()
+  # would lose them, making the join back to nyc_311 impossible
+  coords_sf <- unique_coords |>
+    mutate(lat_keep = latitude, lon_keep = longitude) |>
+    st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
+    rename(latitude = lat_keep, longitude = lon_keep)
+  
+  # Convert weather coordinate points to sf, one row per point_id
+  # We only need one row per point_id (not 23,376 rows) for the spatial match
+  weather_points_sf <- BOROUGH_COORDS |>
+    st_as_sf(coords = c("lon", "lat"), crs = 4326)
+  
+  # For each unique 311 coordinate, find the nearest weather point
+  # WITHIN THE SAME BOROUGH — this prevents cross-river matches
+  # (e.g. southern Manhattan matching to Brooklyn north)
+  point_lookup <- map_dfr(
+    unique(unique_coords$borough),
+    function(b) {
+      # Subset both layers to this borough only
+      req_pts     <- coords_sf     |> filter(borough == b)
+      weather_pts <- weather_points_sf |> filter(borough == b)
+      
+      # st_nearest_feature() returns the index of the nearest weather point
+      # for each 311 request point within this borough
+      nearest_idx <- st_nearest_feature(req_pts, weather_pts)
+      
+      # Build lookup: original coordinates -> matched point_id
+      req_pts |>
+        st_drop_geometry() |>
+        mutate(point_id = weather_pts$point_id[nearest_idx])
+    }
+  )
+  
+  message(sprintf("   Lookup table built: %s rows", scales::comma(nrow(point_lookup))))
+  
+  # ---- Step 2: Attach point_id to all 311 requests ----
+  message("   Attaching point_id to 311 requests...")
+  
+  nyc_311_with_point <- nyc_311 |>
+    left_join(point_lookup, by = c("borough", "latitude", "longitude"))
+  # Records with missing coordinates or borough will have NA point_id
+  # and therefore NA weather fields after the next join
+  
+  # ---- Step 3: Join weather data on point_id + date ----
+  message("   Joining weather data by point_id + date...")
+  
+  nyc_311_with_weather <- nyc_311_with_point |>
     left_join(
       # Only bring in the weather columns needed for analysis
       weather |> select(
-        borough, date,
+        point_id, date,
         temp_max_f, temp_min_f, temp_avg_f,
         precip_in, snowfall_in, windspeed_mph,
         weather_category, dominant_condition, hazard_count
       ),
-      by = c("borough", "date")
+      by = c("point_id", "date")
     )
   
-  # Report how many records were matched vs left without weather data
+  # Report match quality
   n_matched   <- sum(!is.na(nyc_311_with_weather$weather_category))
   n_unmatched <- sum(is.na(nyc_311_with_weather$weather_category))
   
-  message(sprintf("   Matched:                        %s rows",
+  message(sprintf("   Matched:                            %s rows",
                   scales::comma(n_matched)))
-  message(sprintf("   No weather match (missing borough): %s rows",
+  message(sprintf("   No weather match (missing coords/borough): %s rows",
                   scales::comma(n_unmatched)))
   
   write_parquet(nyc_311_with_weather, PATH_JOINED)
@@ -463,5 +532,5 @@ fetch_weather_data()
 build_joined_data()
 
 message("========================================")
-message("All data ready.")
+message("All data ready. You can now render individual_report.qmd")
 message("========================================\n")
