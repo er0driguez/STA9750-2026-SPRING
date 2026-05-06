@@ -97,8 +97,8 @@ WRITING NOTES:
 ```{r data-acquisition}
 
 ## Read the pre-processed parquet files produced by fetch_data.R
-## 
-# Weather data: ~7,300 rows (5 boroughs x 1,461 days)
+
+# Weather data: 23,376 rows (16 points across 5 boroughs x 1,461 days)
 weather <- read_parquet("data/individual/weather/weather_clean.parquet")
 
 # Clean 311 data: ~13M rows, may take a moment to load
@@ -107,17 +107,109 @@ nyc_311 <- read_parquet("data/individual/nyc_311_clean.parquet")
 # Joined dataset: 311 requests with weather data
 nyc_311_with_weather <- read_parquet("data/individual/nyc_311_with_weather.parquet")
 
+```
+
+```{r data-checks, include = FALSE}
+
 # Validate that data loaded correctly
 glimpse(nyc_311)
 glimpse(weather)
 glimpse(nyc_311_with_weather)
 
+# ---- Date ranges ----
+cat("311 date range:", format(min(nyc_311$date)), "to", format(max(nyc_311$date)), "\n")
+cat("Weather date range:", format(min(weather$date)), "to", format(max(weather$date)), "\n")
+cat("Weather points:", n_distinct(weather$point_id), "\n")
+cat("311 records:", scales::comma(nrow(nyc_311)), "\n")
+cat("Matched records:", scales::comma(sum(!is.na(nyc_311_with_weather$weather_category))), "\n")
+
+# ---- Borough coverage ----
+nyc_311 |> count(borough, sort = TRUE)
+weather |> count(borough)
+
+# ---- Weather points ----
+# All 16 weather points present with equal day counts
+weather |> count(point_id)
+
+# ---- Match rate ----
+nyc_311_with_weather |>
+  summarise(
+    matched     = sum(!is.na(weather_category)),
+    unmatched   = sum(is.na(weather_category)),
+    total       = n(),
+    pct_matched = mean(!is.na(weather_category)) * 100
+  )
+
+# ---- Resolution time bounds ----
+# Confirm resolution times are within expected range (0 to 17,520 hours)
+nyc_311 |>
+  summarise(
+    min_hrs    = min(resolution_hrs),
+    max_hrs    = max(resolution_hrs),
+    median_hrs = median(resolution_hrs)
+  )
+
+# ---- Missing coordinates ----
+nyc_311 |>
+  summarise(
+    has_coords     = sum(!is.na(latitude) & !is.na(longitude)),
+    missing_coords = sum(is.na(latitude) | is.na(longitude)),
+    pct_missing    = mean(is.na(latitude) | is.na(longitude)) * 100
+  )
+
+n_total <- nrow(nyc_311)
+n_missing_coords <- sum(is.na(nyc_311$latitude) | is.na(nyc_311$longitude))
+pct_missing_coords <- round(mean(is.na(nyc_311$latitude) | is.na(nyc_311$longitude)) * 100, 2)
+n_matched_weather <- sum(!is.na(nyc_311_with_weather$weather_category))
+n_unmatched_weather <- sum(is.na(nyc_311_with_weather$weather_category))
+pct_matched_weather <- round(mean(!is.na(nyc_311_with_weather$weather_category)) * 100, 2)
+date_start_311     <- format(min(nyc_311$date))
+date_end_311       <- format(max(nyc_311$date))
+median_res_hrs     <- round(median(nyc_311$resolution_hrs), 2)
+n_weather_points   <- n_distinct(weather$point_id)
+n_weather_rows     <- nrow(weather)
 
 ```
 
-Created a separate script that is run once manually to download and cache all data into parquet files. Due to high volume of 311 data (~13 million rows), the initial fetch takes around 40 minutes and caching helps prevent running and downloading this data every time a change is made. The parquet files produced sit on disk and this report will just read them in order to perform analysis. 
+**Snapshot of Data Acquired**
+
+* Of the `r comma(n_total)` records, `r comma(n_missing_coords)` (`r pct_missing_coords`%) lacked geographic coordinates and could not be matched to a weather point.
+
+* The 311 dataset spans `r date_start_311` to `r date_end_311`, containing `r comma(n_total)` closed service requests.
+
+* Of all records, `r comma(n_matched_weather)` (`r pct_matched_weather`%) were successfully matched to a weather point.
+
+* The median resolution time across all requests was `r median_res_hrs` hours.
+
+**Data Acquisition**
+
+Created a separate script that is run once manually to download and cache all data into parquet files. Due to high volume of 311 data (~13 million rows), the initial fetch takes around 40 minutes and caching helps prevent running and downloading this data from square one every time a change is made. The parquet files produced sit on disk and this report will just read them in order to perform analysis. 
 
 I chose to use parquet over CSV because CSV files would process slowly and be memory-inefficient as it offers no compression. Parquet, a binary file format designed specifically for large tabular data sets, is a better choice for this particular project. Parquet compression makes file sizes significantly smaller and it preserves data types directly provided by the source API, which means the 13 million row data set loads much faster and uses significantly less memory.
+
+Every time fetch_data.R runs, before making any API call it checks whether the output file already exists on disk.
+
+If the file is already there, the function exits immediately and skips the download entirely. If it isn't there, it proceeds with the fetch.
+This applies at two levels:
+
+Page level — each of the 264+ individual API pages is saved immediately as its own parquet file the moment it downloads. If the session crashes on page 200, re-running picks up from page 201 rather than starting over
+File level — once the final clean parquet files exist, the entire fetch is skipped on every subsequent run
+
+the report can be rendered repeatedly and quickly — it just reads the finished parquet files from disk. The expensive data acquisition work only ever happens once, and the results are preserved indefinitely until you deliberately delete the cached files to force a refresh.  persistent cache decouples data acquisition from report rendering
+
+Note on Excluded Records after Join: Joining on if there is a borough and lat/long coords 
+
+193,283 records are missing both lat and lon — these are the records with no coordinates at all. Lat and lon are always missing together, never one without the other, which makes sense — if a request has no location it has neither coordinate.
+196,803 unmatched in the joined dataset — the difference of 3,520 between this and the 193,283 missing coordinates accounts for records that have coordinates but whose borough was NA, so they were excluded from the spatial lookup in Step 1.
+1.46% of all records have no coordinates — a small but meaningful fraction. These are typically requests submitted by phone where the caller didn't provide a specific address, or agency-generated requests without a precise location.
+
+13,002,701 records (98.54%) have valid coordinates and can be spatially matched
+193,283 records (1.46%) have no coordinates and will receive NA weather fields
+13,195,984 total — all records accounted for
+
+phone-submitted requests often don't have precise location data
+
+
 
 ```{r data-prep-summary}
 # Summary statistics of the cleaned datasets to validate acquisition
@@ -126,6 +218,35 @@ I chose to use parquet over CSV because CSV files would process slowly and be me
 ```
 
 ## EDA: NYC 311 Requests & Weather in NYC
+
+### Limitations in Analysis
+
+**Data Limitations**
+* 193,283 records (1.46%) missing coordinates could not be spatially matched to weather data and receive NA weather fields
+
+* 16 weather coordinate points represent borough-level conditions but cannot capture hyper-local microclimate variation within boroughs
+
+* Weather data is daily resolution — hourly weather events like afternoon thunderstorms or overnight cold snaps are averaged into daily summaries, potentially obscuring short-duration but high-impact weather events
+
+* Open-Meteo uses ERA5 reanalysis model rather than direct station readings — modeled estimates rather than observed measurements
+
+**Methodological Limitations**
+* Resolution time is used as a proxy for service quality — a closed request does not necessarily mean the issue was resolved satisfactorily
+
+* Sub-1-minute closures (316,472 records / 2.4%) likely represent automated or duplicate closures rather than genuine resolutions — their inclusion may affect agency-level averages
+
+* temp_min_f used for cold weather classification captures overnight lows which drive infrastructure stress but may not reflect daytime conditions experienced by residents
+
+* One weather coordinate per borough subregion — future nearest-neighbor upgrade with denser coordinates would improve spatial precision
+
+* Analysis is correlational — weather conditions are associated with resolution time changes but causation cannot be established from observational data alone
+
+**Scope Limitations**
+* Four year window (2022-2025) may not capture longer-term seasonal patterns or anomalous weather years
+
+* Borough is the finest geographic unit for weather matching — community district and neighborhood level variation in both weather and service delivery is not captured
+
+
 
 ### Weather Patterns in NYC (2022–2025)
 
@@ -149,7 +270,77 @@ WRITING NOTES:
 ```{r weather-category-by-borough}
 # Bar chart or table: count of Normal/Adverse/Extreme days per borough
 # Use plotly for interactivity
+
+# Count of days per weather category per borough
+# Aggregated to borough level using the most common weather category
+# across all points within the borough on each day
+weather_category_by_borough <- weather |>
+  group_by(borough, date) |>
+  summarise(
+    # Most common category across all points in the borough that day
+    weather_category = names(which.max(table(weather_category))),
+    .groups = "drop"
+  ) |>
+  mutate(
+    weather_category = factor(weather_category,
+                              levels = c("Normal", "Adverse", "Extreme"),
+                              ordered = TRUE)
+  ) |>
+  count(borough, weather_category)
+
+weather_category_by_borough
+
+# Stacked bar chart: count of Normal/Adverse/Extreme days by borough
+weather_conditions_by_borough <- ggplot(weather_category_by_borough,
+       aes(x = borough, y = n, fill = weather_category)) +
+  geom_col(width = 0.6) +
+  # Labels for Normal and Adverse — centered inside their segments
+  geom_text(
+    data     = weather_category_by_borough |> 
+                 filter(weather_category != "Extreme"),
+    aes(label = comma(n)),
+    position = position_stack(vjust = 0.5),
+    size     = 3,
+    color    = "white",
+    fontface = "bold"
+  ) +
+  # Label for Extreme — positioned above the full bar
+  geom_text(
+    data     = weather_category_by_borough |> 
+                 filter(weather_category == "Extreme"),
+    aes(label = paste0("Extreme: ", comma(n)),
+        y     = 0),
+    vjust    = 1.0,
+    size     = 2.5,
+    color    = "#e74c3c",
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Normal  = "#2ecc71",
+               Adverse = "#f39c12",
+               Extreme = "#e74c3c"),
+    name = "Weather Category"
+  ) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title    = "Weather Conditions by Borough (2022-2025)",
+    subtitle = "Number of days classified as Normal, Adverse, or Extreme",
+    x        = NULL,
+    y        = "Number of Days"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40")
+  )
+
+weather_conditions_by_borough
+
+
 ```
+
+Normal weather days dominate across all 5 boroughs as expected. The Bronx and Manhattan experienced the most Adverse days and Staten Island experienced the fewest. Extreme days are rare. 
 
 #### Temperature Trends
 
@@ -164,7 +355,68 @@ WRITING NOTES:
 ```{r temperature-trends}
 # Time series: daily avg temperature by borough over 2022-2025
 # Annotate notable extreme heat and cold periods
+
+
+# Aggregate daily temperature to borough level by averaging across all
+# weather points within each borough, then compute weekly averages
+weather_temp_weekly <- weather |>
+  # Step 1: average across points within each borough for each day
+  group_by(borough, date) |>
+  summarise(
+    daily_avg_temp = mean(temp_avg_f, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  # Step 2: aggregate daily values to weekly averages
+  # floor_date() rounds down to the nearest Sunday for each date
+  mutate(week = floor_date(date, "week")) |>
+  group_by(borough, week) |>
+  summarise(
+    weekly_avg_temp = mean(daily_avg_temp, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  # Step 3: extract year from week for faceting by year
+  # filter removes the 2021-12-26 week that floor_date() creates
+  # when rounding down dates in the first week of January 2022
+  mutate(year = year(week)) |>
+  filter(year >= 2022)
+
+# Line chart: weekly average temperature by borough faceted by year
+# Each panel shows one year allowing clear comparison of seasonal patterns
+weather_temp_trends <- ggplot(
+    weather_temp_weekly,
+    aes(x = week, y = weekly_avg_temp, color = borough)) +
+  geom_line(linewidth = 0.7, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1", name = "Borough") +
+  # Show month abbreviations on x axis — free_x allows each facet
+  # to have its own x axis scaled to that year's date range
+  scale_x_date(
+    date_breaks = "2 months",
+    date_labels = "%b"
+  ) +
+  scale_y_continuous(labels = \(x) paste0(x, "°F")) +
+  # Arrange four years in a 2x2 grid
+  facet_wrap(~ year, scales = "free_x", ncol = 2) +
+  labs(
+    title    = "Weekly Average Temperature by Borough (2022-2025)",
+    subtitle = "Average of daily mean temperatures across all weather points per borough",
+    x        = NULL,
+    y        = "Average Temperature (°F)"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    axis.text.x     = element_text(angle = 45, hjust = 1)
+  )
+
+weather_temp_trends
+
+
 ```
+
+The near-identical lines show that temperature is consistent across boroughs with no major variability across boroughs as far as average temperature goes. 
+
 
 #### Precipitation and Snowfall
 
@@ -178,7 +430,108 @@ WRITING NOTES:
 ```{r precipitation-trends}
 # Time series or bar chart: monthly precipitation and snowfall totals
 # Consider showing by borough to highlight coastal vs inland differences
+
+# Check variability of precipitation and snowfall across boroughs
+weather |>
+  group_by(borough) |>
+  summarise(
+    mean_precip  = mean(precip_in,   na.rm = TRUE),
+    mean_snow    = mean(snowfall_in, na.rm = TRUE),
+    total_precip = sum(precip_in,    na.rm = TRUE),
+    total_snow   = sum(snowfall_in,  na.rm = TRUE)
+  )
+
+# Aggregate daily precipitation and snowfall to NYC-wide monthly totals
+# Step 1: average across all 16 weather points for each day to get a single city-wide daily value, correcting for Queens having 4 points vs 3 for other boroughs
+# Step 2: sum daily values to monthly totals
+
+weather_precip_monthly <- weather |>
+  # Step 1: average across all points for each day
+  group_by(date) |>
+  summarise(
+    daily_precip = mean(precip_in,   na.rm = TRUE),
+    daily_snow   = mean(snowfall_in, na.rm = TRUE),
+    .groups      = "drop"
+  ) |>
+  # Step 2: aggregate to monthly totals
+  mutate(month = floor_date(date, "month")) |>
+  group_by(month) |>
+  summarise(
+    total_precip = sum(daily_precip, na.rm = TRUE),
+    total_snow   = sum(daily_snow,   na.rm = TRUE),
+    .groups      = "drop"
+  )
+
+
+# Pivot to long format for faceted visualization
+# This allows ggplot to facet by variable (precipitation vs snowfall)
+# while sharing the same x axis
+weather_precip_long <- weather_precip_monthly |>
+  pivot_longer(
+    cols      = c(total_precip, total_snow),
+    names_to  = "variable",
+    values_to = "inches"
+  ) |>
+  mutate(
+    # Clean up variable labels for facet titles
+    variable = recode(variable,
+                      total_precip = "Precipitation (in)",
+                      total_snow   = "Snowfall (in)")
+  )
+
+
+# Stacked panel chart: monthly precipitation and snowfall (2022-2025)
+# Two panels share the same x axis — precipitation on top, snowfall on bottom
+weather_precip_snow <- ggplot(weather_precip_long,
+       aes(x = month, y = inches, fill = variable)) +
+  geom_col(width = 25, show.legend = FALSE) +
+  scale_fill_manual(
+    values = c(
+      "Precipitation (in)" = "#3498db",
+      "Snowfall (in)"      = "#85c1e9"
+    )
+  ) +
+  scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b %Y"
+  ) +
+  scale_y_continuous(labels = \(x) paste0(x, '"')) +
+  facet_wrap(~ variable, ncol = 1, scales = "free_y") +
+  labs(
+    title    = "Monthly Precipitation and Snowfall in NYC (2022-2025)",
+    subtitle = "NYC-wide average across all 16 weather points",
+    x        = NULL,
+    y        = "Inches"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40"),
+    axis.text.x   = element_text(angle = 45, hjust = 1),
+    strip.text    = element_text(face = "bold")
+  )
+
+weather_precip_snow
+
 ```
+
+**Precipitation:**
+
+* October 2022 stands out as an unusually wet month - storm/hurricane?
+
+* 2023 was the wettest year across all boroughs
+
+* 2025 appears to be the driest (though it may be incomplete depending on when the data ends)
+
+* Borough differences are minimal — roughly 1-2 inches variation in any given year
+
+**Snowfall:**
+
+* 2023 had dramatically less snow than other years across all boroughs
+
+* Staten Island consistently gets less snow than the other boroughs
+
+* 2022 and 2025 were the snowiest years (January 2022 had the highest snowfall of the entire period and Late 2025 shows a notable snowfall spike earlier in year)
 
 #### Weather Event Calendar
 
@@ -192,7 +545,108 @@ WRITING NOTES:
 ```{r weather-calendar}
 # Heatmap: weather category by day of year, faceted by year
 # Shows seasonality of adverse/extreme weather events
+
+# Aggregate daily weather categories to monthly proportions per borough
+# For each borough-month combination, calculate the proportion of days
+# that were classified as Adverse or Extreme
+weather_heatmap <- weather |>
+  # Step 1: get one category per borough per day using most common method
+  group_by(borough, date) |>
+  summarise(
+    weather_category = names(which.max(table(weather_category))),
+    .groups = "drop"
+  ) |>
+  # Step 2: aggregate to monthly proportions per borough
+  mutate(month = floor_date(date, "month")) |>
+  group_by(borough, month) |>
+  summarise(
+    n_days          = n(),
+    n_adverse       = sum(weather_category == "Adverse"),
+    n_extreme       = sum(weather_category == "Extreme"),
+    pct_adverse     = mean(weather_category %in% c("Adverse", "Extreme")) * 100,
+    .groups         = "drop"
+  )
+
+# # Monthly heatmap: proportion of adverse/extreme days by borough
+# weather_adverse_heatmap <- ggplot(weather_heatmap,
+#        aes(x = month, y = borough, fill = pct_adverse)) +
+#   geom_tile(color = "white", linewidth = 0.3) +
+#   scale_fill_gradient(
+#     low      = "#ffffff",
+#     high     = "#e74c3c",
+#     name     = "% Adverse/\nExtreme Days"
+#   ) +
+#   scale_x_date(
+#     date_breaks = "3 months",
+#     date_labels = "%b %Y"
+#   ) +
+#   labs(
+#     title    = "Monthly Adverse & Extreme Weather Days by Borough (2022-2025)",
+#     subtitle = "Percentage of days per month classified as Adverse or Extreme",
+#     x        = NULL,
+#     y        = NULL
+#   ) +
+#   theme_bw() +
+#   theme(
+#     plot.title    = element_text(face = "bold"),
+#     plot.subtitle = element_text(color = "gray40"),
+#     axis.text.x   = element_text(angle = 45, hjust = 1),
+#     legend.position = "right"
+#   )
+# 
+# weather_adverse_heatmap
+
+# Monthly heatmap: proportion of adverse/extreme days by borough
+weather_adverse_heatmap <- ggplot(weather_heatmap,
+       aes(x = month, y = borough, fill = pct_adverse,
+           text = paste0(
+             "Borough: ", borough, "\n",
+             "Month: ", format(month, "%B %Y"), "\n",
+             "Adverse Days: ", n_adverse, "\n",
+             "Extreme Days: ", n_extreme, "\n",
+             "Total Days: ", n_days, "\n",
+             "% Adverse/Extreme: ", round(pct_adverse, 1), "%"
+           ))) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  scale_fill_gradient(
+    low  = "#ffffff",
+    high = "#e74c3c",
+    name = "% Adverse/\nExtreme Days"
+  ) +
+  scale_x_date(
+    date_breaks = "3 months",
+    date_labels = "%b %Y"
+  ) +
+  labs(
+    title    = "Monthly Adverse & Extreme Weather Days by Borough (2022-2025)",
+    subtitle = "Percentage of days per month classified as Adverse or Extreme",
+    x        = NULL,
+    y        = NULL
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    axis.text.x     = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  )
+
+# Convert to interactive plotly chart with custom tooltip
+ggplotly(weather_adverse_heatmap, tooltip = "text")
+
+
 ```
+
+Winter months (Jan/Feb) show the darkest reds across all boroughs — high proportion of adverse/extreme days driven by cold temperatures
+
+Summer months show lighter colors with some mid-range reds in July/August — heat events
+
+January 2022 Bronx shows 77% adverse/extreme days — a very cold January which matches our earlier findings
+
+July and August 2022 show 32% adverse days — likely heat events
+
+The pattern is consistent across boroughs which reinforces our earlier finding that weather conditions don't vary dramatically between boroughs
+
 
 ### 311 Service Request Overview
 
@@ -214,7 +668,101 @@ WRITING NOTES:
 ```{r request-volume}
 # Bar chart: total requests by borough and year
 # Use plotly for interactivity
+
+# Count of 311 requests by year
+requests_by_year <- nyc_311 |>
+  mutate(year = year(date)) |>
+  count(year)
+
+# Line chart: total 311 service requests by year
+requests_by_year_chart <- ggplot(requests_by_year,
+       aes(x = year, y = n)) +
+  geom_line(color = "#3498db", linewidth = 1) +
+  geom_point(color = "#3498db", size = 3) +
+  geom_text(
+    aes(label = comma(n),
+            hjust = ifelse(year == 2022, -0.1, 0.5)),
+    vjust    = -1,
+    size     = 3.5,
+    fontface = "bold"
+  ) +
+  scale_x_continuous(breaks = c(2022, 2023, 2024, 2025)) +
+  scale_y_continuous(
+    labels = comma,
+    expand = expansion(mult = c(0.05, 0.1))
+  ) +
+  labs(
+    title    = "NYC 311 Service Requests by Year (2022-2025)",
+    subtitle = "Total closed service requests per year",
+    x        = NULL,
+    y        = "Number of Requests"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+requests_by_year_chart
+
+requests_by_year_borough <- nyc_311 |>
+  mutate(year = year(date)) |>
+  count(year, borough) |>
+  filter(!is.na(borough))
+
+
+# Net growth of 311 requests by borough from 2022 to 2025
+requests_growth <- requests_by_year_borough |>
+  filter(year %in% c(2022, 2025)) |>
+  pivot_wider(names_from = year, values_from = n, names_prefix = "year_") |>
+  mutate(
+    net_growth     = year_2025 - year_2022,
+    pct_growth     = round((year_2025 - year_2022) / year_2022 * 100, 1)
+  ) |>
+  arrange(desc(pct_growth))
+
+# Horizontal bar chart: net growth of 311 requests by borough (2022-2025)
+requests_growth_chart <- ggplot(requests_growth,
+       aes(x = pct_growth, y = reorder(borough, pct_growth))) +
+  geom_col(fill = "#3498db", width = 0.6) +
+  geom_text(
+    aes(label = paste0(pct_growth, "%")),
+    hjust    = -0.2,
+    size     = 3.5,
+    fontface = "bold"
+  ) +
+  scale_x_continuous(
+    labels = \(x) paste0(x, "%"),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title    = "Net Growth in 311 Service Requests by Borough (2022-2025)",
+    subtitle = "Percentage increase in closed service requests from 2022 to 2025",
+    x        = "Percentage Growth",
+    y        = NULL
+  ) +
+  theme_bw() +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+requests_growth_chart
+
 ```
+
+Brooklyn consistently has the highest volume of requests and has shown consistent year over year growth
+
+Bronx dipped in 2023 and rebounded in 2024 and 2025.
+
+Staten Island the lowest (and relatively flat across all four years)
+
+Manhattan Shows steady but modest growth from 618,835 in 2022 to 703,589 in 2025 — about 14% increase over the period (2022 was notably lower)
+
+Queens Shows the strongest and most consistent growth of any borough — from 703,600 in 2022 to 850,735 in 2025, a 21% increase over the period. Queens surpassed Manhattan in every year despite having a comparable population, which is interesting given that Manhattan is the most densely populated borough. The gap between Queens and Manhattan widens each year suggesting Queens residents are increasingly engaging with 311
+
+Brooklyn, Queens, and the Bronx are all growing faster than Manhattan and Staten Island
+
 
 #### Top Complaint Types and Agencies
 
@@ -228,13 +776,136 @@ WRITING NOTES:
   HEAT/HOT WATER, Street Condition, Water System, Missed Collection
 -->
 
+**Top Complaints**
+
 ```{r complaint-types}
 # Horizontal bar chart: top 20 complaint types
 # Highlight weather-sensitive types in a different color
+
+# Normalize complaint types to uppercase to catch all casing duplicates
+# then aggregate counts and find top 2 agencies for each type
+top_complaint_types <- nyc_311 |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  count(complaint_type, sort = TRUE) |>
+  slice_head(n = 15)
+
+# For each of the top 15 complaint types, find the top 2 responding agencies
+top_complaint_agencies <- nyc_311 |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  filter(complaint_type %in% top_complaint_types$complaint_type) |>
+  count(complaint_type, agency, sort = TRUE) |>
+  group_by(complaint_type) |>
+  slice_head(n = 2) |>
+  summarise(
+    top_agencies = paste(agency, collapse = "/"),
+    .groups = "drop"
+  )
+
+# Join complaint counts with top agency labels
+top_complaints_with_agencies <- top_complaint_types |>
+  left_join(top_complaint_agencies, by = "complaint_type")
+
+# Extract primary agency for color fill
+top_complaints_with_agencies <- top_complaints_with_agencies |>
+  mutate(
+    primary_agency = str_extract(top_agencies, "^[^/]+"),
+    # Reorder by count for horizontal bar chart
+    complaint_type = fct_reorder(complaint_type, n)
+  )
+
+# Define color palette for agencies
+agency_colors <- c(
+  "NYPD" = "#2980b9",
+  "HPD"  = "#e74c3c",
+  "DOT"  = "#27ae60",
+  "DEP"  = "#8e44ad",
+  "DSNY" = "#f39c12",
+  "DOB"  = "#16a085"
+)
+
+# Horizontal bar chart: top 15 complaint types colored by primary agency
+# with top 2 agencies labeled on each bar
+top_complaints_chart <- ggplot(top_complaints_with_agencies,
+       aes(x = n, y = complaint_type, fill = primary_agency)) +
+  geom_col(width = 0.7) +
+  geom_text(
+    aes(label = paste0(top_agencies, "  ")),
+    hjust    = 1,
+    size     = 3,
+    color    = "white",
+    fontface = "bold"
+  ) +
+  scale_fill_manual(values = agency_colors, name = "Primary Agency") +
+  scale_x_continuous(labels = comma) +
+  labs(
+    title    = "Top 15 NYC 311 Complaint Types (2022-2025)",
+    subtitle = "And their primary responding agency",
+    x        = "Number of Requests",
+    y        = NULL
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+top_complaints_chart
+
 ```
+
+**Top Responding Agencies**
 
 ```{r agencies}
 # Bar chart: top 10 agencies by request volume
+
+# Count of 311 requests by agency, normalized to uppercase to catch
+# any casing inconsistencies, top 10 by volume
+n_total_requests <- nrow(nyc_311)
+
+top_agencies <- nyc_311 |>
+  mutate(agency_name = str_to_upper(str_trim(agency_name))) |>
+  count(agency_name, sort = TRUE) |>
+  slice_head(n = 10) |>
+  mutate(
+    # Percentage of all 13.2M requests handled by each agency
+    pct_total   = round(n / n_total_requests * 100, 1),
+    agency_name = fct_reorder(agency_name, n)
+  )
+
+# GT table: top 10 responding agencies by request volume
+top_agencies_table <- top_agencies |>
+  arrange(desc(n)) |>
+  select(agency_name, n, pct_total) |>
+  mutate(
+    # Convert agency names from uppercase to title case for readability
+    agency_name = str_to_title(str_to_lower(agency_name))
+  ) |>
+  gt() |>
+  tab_header(
+    title    = "Top 10 Responding Agencies by 311 Request Volume (2022-2025)",
+    subtitle = "Total closed service requests per agency"
+  ) |>
+  cols_label(
+    agency_name = "Agency",
+    n           = "Requests",
+    pct_total   = "% of Total"
+  ) |>
+  fmt_number(columns = n, decimals = 0) |>
+  fmt_number(columns = pct_total, decimals = 1, suffix = "%") |>
+  cols_align(align = "left",  columns = agency_name) |>
+  cols_align(align = "right", columns = c(n, pct_total)) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#f2f2f2"),
+    locations = cells_body(rows = seq(1, 10, by = 2))
+  )
+
+top_agencies_table
+
 ```
 
 #### Resolution Time Distribution
@@ -258,7 +929,111 @@ WRITING NOTES:
 ```{r resolution-distribution}
 # Histogram or density plot of resolution times (log scale)
 # Annotate the median and key percentiles
+
+# Resolution time distribution data
+# Version 1: all records excluding exact zeros (log scale requires > 0)
+resolution_dist_all <- nyc_311 |>
+  filter(resolution_hrs > 0) |>
+  select(resolution_hrs)
+
+# Resolution time categories
+# Applied to full dataset including instant closures
+resolution_categories <- nyc_311 |>
+  mutate(
+    resolution_category = case_when(
+      resolution_hrs <  0.017             ~ "Instant",
+      resolution_hrs <  1                 ~ "Fast",
+      resolution_hrs <  24                ~ "Standard",
+      resolution_hrs <  720               ~ "Extended",
+      TRUE                                ~ "Long-term"
+    ) |> factor(levels = c("Instant", "Fast", "Standard",
+                            "Extended", "Long-term"),
+                ordered = TRUE)
+  ) |>
+  count(resolution_category) |>
+  mutate(pct = round(n / sum(n) * 100, 1))
+
+
+# Density plot: resolution time distribution on log scale
+resolution_density <- ggplot(resolution_dist_all,
+       aes(x = resolution_hrs)) +
+  geom_density(
+    color     = "#3498db",
+    linewidth = 0.8
+  ) +
+  scale_x_log10(
+    labels = \(x) case_when(
+      x < 1    ~ paste0(round(x * 60), "m"),
+      x < 24   ~ paste0(round(x), "h"),
+      x < 720  ~ paste0(round(x / 24), "d"),
+      TRUE     ~ paste0(round(x / 720), "mo")
+    ),
+    breaks = c(0.017, 0.25, 1, 6, 24, 168, 720, 4380, 17520)
+  ) +
+  labs(
+    title   = "Distribution of 311 Service Request Resolution Times (2022-2025)",
+    subtitle = "Log scale — two peaks visible at ~1 hour and ~1-2 days",
+    x       = "Resolution Time",
+    y       = "Density",
+    caption = "Source: NYC Open Data — 311 Service Requests (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40"),
+    plot.caption  = element_text(color = "gray40")
+  )
+
+resolution_density
+
+# GT table: percentage of requests by resolution time category
+resolution_categories_table <- resolution_categories |>
+  mutate(resolution_category = as.character(resolution_category)) |>
+  gt() |>
+  tab_header(
+    title    = "311 Service Requests by Resolution Time Category (2022-2025)",
+    subtitle = "Distribution of closed service requests across resolution time categories"
+  ) |>
+  cols_label(
+    resolution_category = "Resolution Category",
+    n                   = "Requests",
+    pct                 = "% of Total"
+  ) |>
+  fmt_number(columns = n,   decimals = 0) |>
+  fmt_number(columns = pct, decimals = 1, suffix = "%") |>
+  cols_align(align = "left",  columns = resolution_category) |>
+  cols_align(align = "right", columns = c(n, pct)) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#f2f2f2"),
+    locations = cells_body(rows = seq(1, 5, by = 2))
+  ) |>
+  tab_source_note(
+    source_note = "Source: NYC Open Data — 311 Service Requests (2022-2025)"
+  )
+
+resolution_categories_table
+
+
 ```
+
+**Resolution Time Categories**
+
+* Instant: < 0.017 hrs (under 1 minute)
+* Fast: 0.017 to 1 hr
+* Standard: 1 to 24 hrs
+* Extended: 24 to 720 hrs (1 month)
+* Long-term: over 720 hrs
+
+nearly a quarter of all requests resolved within an hour. Fast + Standard together account for 57.8% of all requests resolved within 24 hours.
+
+two peaks, one around 1 hour and another around 24-48 hours, with a long tail extending to months. This bimodal pattern suggests two distinct types of resolution behavior in the data
+
+Long tail: 8.2% of requests take over 30 days
+
 
 ```{r instant-closures}
 # Table: top complaint types and agencies for sub-1-minute resolutions
@@ -277,7 +1052,79 @@ WRITING NOTES:
 ```{r seasonal-patterns}
 # Line chart: monthly request volume over 2022-2025
 # Facet or color by complaint type category
+
+# Identify the 28 complaint types that account for 80% of all requests
+top_complaint_types_80 <- nyc_311 |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  count(complaint_type, sort = TRUE) |>
+  mutate(
+    pct            = n / sum(n) * 100,
+    cumulative_pct = cumsum(pct)
+  ) |>
+  filter(cumulative_pct <= 80) |>
+  pull(complaint_type)
+
+# Compute average monthly request volume per complaint type
+# averaged across all 4 years
+seasonal_patterns <- nyc_311 |>
+  mutate(
+    complaint_type = str_to_upper(str_trim(complaint_type)),
+    month_num      = month(date),
+    month_name     = month(date, label = TRUE, abbr = TRUE)
+  ) |>
+  filter(complaint_type %in% top_complaint_types_80) |>
+  count(complaint_type, month_num, month_name) |>
+  # Divide by 4 to get average monthly volume across the 4 year period
+  mutate(avg_monthly = n / 4)
+
+# Heatmap: average monthly request volume by complaint type (2022-2025)
+# Rows = complaint types, columns = months, color = avg monthly volume
+seasonal_heatmap <- ggplot(seasonal_patterns,
+       aes(x = month_name, 
+           y = reorder(complaint_type, avg_monthly),
+           fill = avg_monthly)) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  scale_fill_gradient(
+    low    = "#ffffff",
+    high   = "#2980b9",
+    limits = c(0, 40000),
+    oob    = scales::squish,
+    name   = "Avg Monthly\nRequests\n(capped at 30k)"
+  ) +
+  scale_x_discrete(position = "top") +
+  labs(
+    title   = "Seasonal Patterns in NYC 311 Requests by Complaint Type",
+    subtitle = "Average monthly request volume across 2022-2025",
+    x        = NULL,
+    y        = NULL,
+    caption  = "Source: NYC Open Dat: 311 Service Requests (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title    = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(color = "gray40"),
+    plot.caption  = element_text(color = "gray40"),
+    axis.text.y   = element_text(size = 8),
+    legend.position = "right"
+  )
+
+seasonal_heatmap
+
 ```
+
+Clear seasonal patterns visible:
+
+HEAT/HOT WATER — darkest in winter months (Jan-Mar, Nov-Dec), nearly white in summer — directly driven by cold weather heating failures
+NOISE - RESIDENTIAL — slightly darker in summer months — people home more with windows open
+ABANDONED VEHICLE — relatively consistent year-round with slight summer uptick
+WATER SYSTEM — slight winter peak — freeze/thaw stress on pipes
+MISSED COLLECTION — slight winter peak — disrupted by snow and ice
+
+ILLEGAL PARKING
+Consistently high year-round — unlike most complaint types that show clear seasonal peaks and troughs, Illegal Parking maintains a relatively uniform dark color across all 12 months. This suggests it's driven more by persistent urban conditions than seasonal factors.
+Slight summer peak — there's a subtle darkening in the summer months (June-August) which could reflect increased street activity, outdoor events, or construction-related parking displacement.
+No winter dip — most complaint types show some reduction in winter, likely because people are less active outdoors. Illegal Parking doesn't follow this pattern, suggesting people continue reporting parking violations regardless of weather conditions.
+Why this matters for your analysis — if Illegal Parking (handled by NYPD) shows little seasonal variation, it may also show little sensitivity to adverse weather conditions. This connects directly to your working hypothesis that agencies whose work isn't directly affected by physical conditions will show less weather sensitivity. NYPD handling parking complaints is a good candidate for that hypothesis.
 
 ### Weather × Resolution Time Analysis
 
@@ -299,6 +1146,281 @@ WRITING NOTES:
 ```{r resolution-by-weather}
 # Box plot or violin plot: resolution time distribution by weather category
 # Use log scale on y-axis given the skewed distribution
+
+# Working dataset for Section 6 analysis
+# Excludes 196,803 records with missing weather data
+nyc_311_weather_analysis <- nyc_311_with_weather |>
+  filter(!is.na(weather_category))
+
+# Median resolution times by weather category
+# Using median rather than mean due to heavy right skew in resolution times
+resolution_by_weather <- nyc_311_weather_analysis |>
+  group_by(weather_category) |>
+  summarise(
+    n_requests  = n(),
+    median_hrs  = median(resolution_hrs, na.rm = TRUE),
+    mean_hrs    = mean(resolution_hrs,   na.rm = TRUE),
+    p25_hrs     = quantile(resolution_hrs, 0.25, na.rm = TRUE),
+    p75_hrs     = quantile(resolution_hrs, 0.75, na.rm = TRUE),
+    .groups     = "drop"
+  )
+
+# Bar chart: median resolution time by weather category
+resolution_by_weather_chart <- ggplot(resolution_by_weather,
+       aes(x = weather_category, y = median_hrs, fill = weather_category)) +
+  geom_col(width = 0.6) +
+  geom_text(
+    aes(label = paste0(round(median_hrs, 1), " hrs")),
+    vjust    = -0.5,
+    size     = 3.5,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Normal  = "#2ecc71",
+               Adverse = "#f39c12",
+               Extreme = "#e74c3c"),
+    name = "Weather Category"
+  ) +
+  scale_y_continuous(
+    labels = \(x) paste0(x, " hrs"),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  labs(
+    title    = "Median 311 Resolution Time by Weather Category (2022-2025)",
+    subtitle = "Across All Complaint Types",
+    x        = NULL,
+    y        = "Median Resolution Time (hrs)",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "none"
+  )
+
+resolution_by_weather_chart
+
+# Median resolution times by dominant weather condition
+# Excludes "Clear" since that corresponds to Normal weather days
+resolution_by_condition <- nyc_311_weather_analysis |>
+  filter(dominant_condition != "Clear") |>
+  group_by(dominant_condition, weather_category) |>
+  summarise(
+    n_requests = n(),
+    median_hrs = median(resolution_hrs, na.rm = TRUE),
+    p25_hrs    = quantile(resolution_hrs, 0.25, na.rm = TRUE),
+    p75_hrs    = quantile(resolution_hrs, 0.75, na.rm = TRUE),
+    .groups    = "drop"
+  )
+
+# Bar chart: median resolution time by dominant weather condition
+# with reference line showing Normal day median for comparison
+resolution_by_condition_chart <- ggplot(resolution_by_condition,
+       aes(x = reorder(dominant_condition, median_hrs),
+           y = median_hrs,
+           fill = weather_category)) +
+  geom_col(position = "dodge", width = 0.6) +
+  # Reference line showing Normal day median for comparison
+  geom_hline(
+    yintercept = 6.02,
+    color      = "#2ecc71",
+    linewidth  = 0.8,
+    linetype   = "dashed"
+  ) +
+  # Label for reference line
+  annotate(
+    "text",
+    x     = 0.5,
+    y     = 7,
+    label = "Normal: 6.02 hrs",
+    color = "#2ecc71",
+    size  = 3,
+    hjust = 0,
+    fontface = "bold"
+  ) +
+  geom_text(
+    aes(label = paste0(round(median_hrs, 1), " hrs")),
+    position = position_dodge(width = 0.6),
+    vjust    = -0.5,
+    size     = 3,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Adverse = "#f39c12",
+               Extreme = "#e74c3c"),
+    name   = "Weather Category"
+  ) +
+  scale_y_continuous(
+    labels = \(x) paste0(x, " hrs"),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title    = "Median 311 Resolution Time by Weather Condition (2022-2025)",
+    subtitle = "Dashed line shows Normal day median (6.02 hrs) as reference",
+    x        = NULL,
+    y        = "Median Resolution Time (hrs)",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+resolution_by_condition_chart
+
+```
+
+Mean resolution time is lower on Adverse days (301 hr) than Normal days (329 hrs) - mean is heavily influenced by long term unresolved requests and masks the real pattern. Can't rely on mean
+
+Median resolution time increases with weather severity:
+
+Normal: 6.02 hours
+Adverse: 15.3 hours — 2.5x longer than Normal
+Extreme: 20.6 hours — 3.4x longer than Normal
+
+IQR (p25 to p75) widens with severity:
+
+Normal: 0.87 to 82.6 hrs
+Adverse: 1.07 to 94.1 hrs
+Extreme: 1.30 to 89.5 hrs
+
+Not only does the typical resolution time increase during adverse weather, but the spread of resolution times also widens — some requests get resolved faster while others take much longer, suggesting uneven agency responses during bad weather.
+
+**Across Adverse Weather Events**
+what kind of adverse weather matters most
+
+Extreme Cold drives the longest resolution times:
+
+Adverse cold: 24.6 hrs
+Extreme cold: 25.3 hrs
+This is the highest median of any condition — cold weather clearly has the biggest impact on resolution times, likely driven by HEAT/HOT WATER complaints and infrastructure failures
+
+Extreme Heat is the only condition that resolves faster than Normal days — both Adverse (3.7 hrs) and Extreme (4.3 hrs) are well below the 6.02 hr reference line. It may reflect that heat complaints get prioritized or that NYPD closes heat-related complaints quickly
+
+Heavy Rain shows a split:
+
+Adverse rain: 10.2 hrs — moderate impact
+Extreme rain (combined with another hazard): 22.5 hrs — much longer, suggesting compounding effects
+
+High Wind has relatively low impact: 10.1 hrs, just under 2x Normal. High Wind only shows one bar (Adverse) since it never appears as the sole Extreme condition in the data.
+
+Snow: 19.7 hrs — significant impact, only appears as Extreme. 
+
+Snow and Extreme Cold are the most disruptive — both above 19 hrs, with Extreme Cold reaching 25.3 hrs — over 4x the Normal median
+
+```{r resolution-by-weather-agency}
+
+# Median resolution time by agency and weather category
+# Includes all agencies — we can filter down later if needed
+resolution_by_agency_weather <- nyc_311_weather_analysis |>
+  mutate(agency = str_to_upper(str_trim(agency))) |>
+  group_by(agency, weather_category) |>
+  summarise(
+    n_requests = n(),
+    median_hrs = median(resolution_hrs, na.rm = TRUE),
+    .groups    = "drop"
+  )
+
+# Split agencies into high and low volume groups
+# High volume: > 100,000 requests on Normal days
+# Low volume: < 100,000 requests on Normal days
+# OOS and OTI excluded due to insufficient sample size
+
+high_volume_agencies <- c("NYPD", "HPD", "DSNY", "DOT", "DEP", 
+                           "DPR", "DOB", "DOHMH")
+
+low_volume_agencies  <- c("TLC", "DCWP", "DHS", "EDC", "DOE")
+
+# Create two filtered datasets for visualization
+resolution_agency_high <- resolution_by_agency_weather |>
+  filter(agency %in% high_volume_agencies)
+
+resolution_agency_low <- resolution_by_agency_weather |>
+  filter(agency %in% low_volume_agencies)
+
+# Bar chart: median resolution time by agency and weather category
+# High volume agencies
+resolution_agency_high_chart <- ggplot(resolution_agency_high,
+       aes(x = agency, y = median_hrs, fill = weather_category)) +
+  geom_col(position = "dodge", width = 0.7) +
+  geom_text(
+    aes(label = round(median_hrs, 1)),
+    position = position_dodge(width = 0.7),
+    vjust    = -0.5,
+    size     = 2.5,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Normal  = "#2ecc71",
+               Adverse = "#f39c12",
+               Extreme = "#e74c3c"),
+    name   = "Weather Category"
+  ) +
+  scale_y_continuous(
+    labels = \(x) paste0(x, " hrs"),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title    = "Median Resolution Time by Agency — High Volume (2022-2025)",
+    subtitle = "Across Normal, Adverse and Extreme weather days",
+    x        = NULL,
+    y        = "Median Resolution Time (hrs)",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+# Bar chart: median resolution time by agency and weather category
+# Low volume agencies
+resolution_agency_low_chart <- ggplot(resolution_agency_low,
+       aes(x = agency, y = median_hrs, fill = weather_category)) +
+  geom_col(position = "dodge", width = 0.7) +
+  geom_text(
+    aes(label = round(median_hrs, 1)),
+    position = position_dodge(width = 0.7),
+    vjust    = -0.5,
+    size     = 2.5,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Normal  = "#2ecc71",
+               Adverse = "#f39c12",
+               Extreme = "#e74c3c"),
+    name   = "Weather Category"
+  ) +
+  scale_y_continuous(
+    labels = \(x) paste0(x, " hrs"),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title    = "Median Resolution Time by Agency — Lower Volume (2022-2025)",
+    subtitle = "Across Normal, Adverse and Extreme weather days",
+    x        = NULL,
+    y        = "Median Resolution Time (hrs)",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+resolution_agency_high_chart
+resolution_agency_low_chart
+
+
 ```
 
 #### Borough Breakdown
