@@ -288,8 +288,6 @@ weather_category_by_borough <- weather |>
   ) |>
   count(borough, weather_category)
 
-weather_category_by_borough
-
 # Stacked bar chart: count of Normal/Adverse/Extreme days by borough
 weather_conditions_by_borough <- ggplot(weather_category_by_borough,
        aes(x = borough, y = n, fill = weather_category)) +
@@ -1034,12 +1032,6 @@ two peaks, one around 1 hour and another around 24-48 hours, with a long tail ex
 
 Long tail: 8.2% of requests take over 30 days
 
-
-```{r instant-closures}
-# Table: top complaint types and agencies for sub-1-minute resolutions
-# This sets up the later analysis of whether weather affects instant closure rates
-```
-
 #### Seasonal Patterns
 
 <!-- 
@@ -1292,7 +1284,8 @@ Extreme: 1.30 to 89.5 hrs
 Not only does the typical resolution time increase during adverse weather, but the spread of resolution times also widens — some requests get resolved faster while others take much longer, suggesting uneven agency responses during bad weather.
 
 **Across Adverse Weather Events**
-what kind of adverse weather matters most
+
+*what kind of adverse weather matters most*
 
 Extreme Cold drives the longest resolution times:
 
@@ -1343,6 +1336,23 @@ resolution_agency_high <- resolution_by_agency_weather |>
 resolution_agency_low <- resolution_by_agency_weather |>
   filter(agency %in% low_volume_agencies)
 
+# 3. Then: compute percentage change from Normal baseline
+resolution_agency_pct_change <- resolution_by_agency_weather |>
+  filter(agency %in% c(high_volume_agencies, low_volume_agencies)) |>
+  group_by(agency) |>
+  mutate(
+    normal_median = median_hrs[weather_category == "Normal"],
+    pct_change    = round((median_hrs - normal_median) / normal_median * 100, 1)
+  ) |>
+  ungroup() |>
+  mutate(
+    volume_group = case_when(
+      agency %in% high_volume_agencies ~ "High Volume Agencies",
+      agency %in% low_volume_agencies  ~ "Lower Volume Agencies"
+    )
+  )
+
+
 # Bar chart: median resolution time by agency and weather category
 # High volume agencies
 resolution_agency_high_chart <- ggplot(resolution_agency_high,
@@ -1366,7 +1376,7 @@ resolution_agency_high_chart <- ggplot(resolution_agency_high,
     expand = expansion(mult = c(0, 0.15))
   ) +
   labs(
-    title    = "Median Resolution Time by Agency — High Volume (2022-2025)",
+    title    = "Median Resolution Time by Agency (High Volume) (2022-2025)",
     subtitle = "Across Normal, Adverse and Extreme weather days",
     x        = NULL,
     y        = "Median Resolution Time (hrs)",
@@ -1403,8 +1413,8 @@ resolution_agency_low_chart <- ggplot(resolution_agency_low,
     expand = expansion(mult = c(0, 0.15))
   ) +
   labs(
-    title    = "Median Resolution Time by Agency — Lower Volume (2022-2025)",
-    subtitle = "Across Normal, Adverse and Extreme weather days",
+    title    = "Median Resolution Time by Agency (Lower Volume) (2022-2025)",
+    subtitle = "Resolution Across Normal, Adverse and Extreme weather days",
     x        = NULL,
     y        = "Median Resolution Time (hrs)",
     caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
@@ -1420,8 +1430,215 @@ resolution_agency_low_chart <- ggplot(resolution_agency_low,
 resolution_agency_high_chart
 resolution_agency_low_chart
 
+# Define a consistent color per agency across both volume groups
+agency_colors <- c(
+  # High volume
+  "NYPD"  = "#2980b9",
+  "HPD"   = "#e74c3c",
+  "DSNY"  = "#f39c12",
+  "DOT"   = "#27ae60",
+  "DEP"   = "#8e44ad",
+  "DPR"   = "#16a085",
+  "DOB"   = "#d35400",
+  "DOHMH" = "#c0392b",
+  # Low volume
+  "TLC"   = "#2c3e50",
+  "DCWP"  = "#7f8c8d",
+  "DHS"   = "#1abc9c",
+  "EDC"   = "#e67e22",
+  "DOE"   = "#9b59b6"
+)
+
+# Slope chart: % change from Normal baseline colored by agency
+resolution_agency_slope <- ggplot(
+    resolution_agency_pct_change |> filter(weather_category != "Normal"),
+    aes(x = weather_category, y = pct_change,
+        group = agency, color = agency)) +
+  # Strong dashed reference line at 0%
+  geom_hline(
+    yintercept = 0,
+    linetype   = "dashed",
+    color      = "turquoise",
+    linewidth  = 1
+  ) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 3) +
+  geom_text(
+    data = resolution_agency_pct_change |>
+             filter(weather_category == "Extreme"),
+    aes(label = paste0(agency, " (", pct_change, "%)"),
+        vjust = case_when(
+          agency == "DSNY"  ~ -0.5,
+          agency == "DEP"   ~  0,
+          TRUE              ~  -0.25
+        )),
+    hjust    = -0.1,
+    size     = 2.8,
+    fontface = "bold"
+  ) +
+  scale_color_manual(values = agency_colors, name = "Agency") +
+  scale_x_discrete(expand = expansion(mult = c(0.05, 0.45))) +
+  scale_y_continuous(labels = \(x) paste0(x, "%")) +
+  facet_wrap(~ volume_group, scales = "free_y") +
+  labs(
+    title    = "Weather Sensitivity by Agency — % Change from Normal",
+    subtitle = "Median Resolution Time During Bad Weather: Lines above 0% = slower resolution, Lines Below 0% = faster resolution",
+    x        = NULL,
+    y        = "% Change from Normal Weather Median",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40", size = 8),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "none",
+    strip.text      = element_text(face = "bold")
+  )
+
+resolution_agency_slope
+
+# Agency x weather condition breakdown
+# Separating Extreme Cold, Snow, Heat and Rain into distinct conditions
+# All agencies except NYPD
+resolution_agency_condition <- nyc_311_weather_analysis |>
+  mutate(agency = str_to_upper(str_trim(agency))) |>
+  filter(
+    agency %in% c(high_volume_agencies, low_volume_agencies),
+    dominant_condition %in% c("Extreme Cold", "Snow",
+                               "Extreme Heat", "Heavy Rain")
+  ) |>
+  mutate(
+    condition_group = case_when(
+      dominant_condition == "Extreme Cold" ~ "Extreme Cold",
+      dominant_condition == "Snow"         ~ "Snow",
+      dominant_condition == "Extreme Heat" ~ "Extreme Heat",
+      dominant_condition == "Heavy Rain"   ~ "Rain"
+    )
+  ) |>
+  group_by(agency, condition_group) |>
+  summarise(
+    n_requests = n(),
+    median_hrs = median(resolution_hrs, na.rm = TRUE),
+    .groups    = "drop"
+  )
+
+# Compute overall median from full dataset per agency — must use the
+# full resolution time distribution not the condition-level medians
+agency_overall_median <- nyc_311_weather_analysis |>
+  mutate(agency = str_to_upper(str_trim(agency))) |>
+  filter(
+    agency %in% c(high_volume_agencies, low_volume_agencies),
+  ) |>
+  group_by(agency) |>
+  summarise(
+    overall_median = median(resolution_hrs, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Join overall median, compute percentage change and flag low sample sizes
+resolution_agency_condition <- resolution_agency_condition |>
+  left_join(agency_overall_median, by = "agency") |>
+  mutate(
+    pct_change_from_overall = round(
+      (median_hrs - overall_median) / overall_median * 100, 1
+    ),
+    # Flag low sample size cells for grey overlay
+    low_sample = n_requests < 1000
+  )
+
+# Heatmap: % change from overall median by agency and weather condition
+resolution_agency_condition_heatmap <- ggplot(resolution_agency_condition,
+       aes(x = condition_group, y = agency,
+           fill = ifelse(low_sample, NA, pct_change_from_overall))) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  # Grey overlay for low sample size cells
+  geom_tile(
+    data  = resolution_agency_condition |> filter(low_sample),
+    fill  = "gray80",
+    color = "white",
+    linewidth = 0.5
+  ) +
+  # Labels for normal cells
+  geom_text(
+    data     = resolution_agency_condition |> filter(!low_sample),
+    aes(label = paste0(pct_change_from_overall, "%")),
+    size     = 3,
+    fontface = "bold",
+    color    = "black"
+  ) +
+  # Label for low sample size cells
+  geom_text(
+    data     = resolution_agency_condition |> filter(low_sample),
+    aes(label = paste0(pct_change_from_overall, "%*")),
+    size     = 2.5,
+    color    = "gray40",
+    fontface = "italic"
+  ) +
+  scale_fill_gradient2(
+    low      = "#27ae60",
+    mid      = "white",
+    high     = "#e74c3c",
+    midpoint = 0,
+    na.value = "gray80",
+    name     = "% Change from\nAgency's Overall\nMedian"
+  ) +
+  labs(
+    title    = "Weather Condition Sensitivity by Agency",
+    subtitle = "% Resolution Time Change During Adverse Weather: green = faster, red = slower",
+    x        = NULL,
+    y        = NULL,
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)\n*Grey cells indicate insufficient sample size (n < 1,000)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40", size = 9),
+    plot.caption    = element_text(color = "gray40"),
+    axis.text.y     = element_text(size = 9),
+    legend.position = "right"
+  )
+
+resolution_agency_condition_heatmap
 
 ```
+**Agency Standouts**
+
+**Weather Insensitive Agencies**
+
+* NYPD 
+
+* TLC
+
+* DCWP
+
+**DPR** 
+
+* Damaged Tree jumps to 54.7% of all DPR requests vs 22.1% on Normal days. During Extreme weather events — particularly wind and snow storms — Damaged Tree complaints flood in and get resolved quickly (likely crews clearing debris). This shifts the overall DPR median down dramatically. It's not that DPR gets faster during Extreme weather — it's that the complaint type mix changes entirely.
+
+*  dramatically faster during snow, consistent with the tree damage complaint mix shift we identified
+
+**DOHMH**
+
+* Consistently slower during both winter conditions: Cold +43.6% vs Snow +44.3%
+
+**HPD**
+
+* Faster during both but more so during snow but significantly slower during extreme heat (up 103% from the agency's overall median) (could be directly tied to heat complaint spikes)
+
+**DEP**
+
+* Fastest out of the bunch working 92.7% faster in Extreme Heat conditions
+
+##### Key Findings
+
+* Median resolution time increases 2.5x on Adverse and 3.4x on Extreme days
+* Extreme Heat is the only condition where resolution times are faster than Normal
+* Extreme Cold drives the longest resolution times
+* NYPD is essentially weather insensitive — confirms working hypothesis
+* HPD slows significantly during heat (+103%)
+* DPR patterns driven by complaint mix shift not operational change
+* DEP Heat (-92.7%) needs investigation in Subsection 4
 
 #### Borough Breakdown
 
@@ -1438,8 +1655,119 @@ WRITING NOTES:
 ```{r resolution-by-borough-weather}
 # Grouped bar chart or heatmap: median resolution time by borough x weather category
 # Use plotly for interactivity
-```
 
+# Median resolution times by borough and weather category
+resolution_by_borough_weather <- nyc_311_weather_analysis |>
+  filter(!is.na(borough)) |>
+  group_by(borough, weather_category) |>
+  summarise(
+    n_requests = n(),
+    median_hrs = median(resolution_hrs, na.rm = TRUE),
+    p25_hrs    = quantile(resolution_hrs, 0.25, na.rm = TRUE),
+    p75_hrs    = quantile(resolution_hrs, 0.75, na.rm = TRUE),
+    .groups    = "drop"
+  )
+
+# Compute percentage change and absolute difference from Normal baseline
+resolution_borough_pct_change <- resolution_by_borough_weather |>
+  group_by(borough) |>
+  mutate(
+    normal_median = median_hrs[weather_category == "Normal"],
+    pct_change    = round(
+      (median_hrs - normal_median) / normal_median * 100, 1
+    ),
+    abs_change    = round(median_hrs - normal_median, 1)
+  ) |>
+  ungroup()
+
+# Slope chart with updated labels and legend
+resolution_borough_slope <- ggplot(
+    resolution_borough_pct_change |> filter(weather_category != "Normal"),
+    aes(x = weather_category, y = pct_change,
+        group = borough, color = borough)) +
+  geom_hline(
+    yintercept = 0,
+    linetype   = "dashed",
+    color      = "black",
+    linewidth  = 1
+  ) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 3) +
+  geom_text(
+    data = resolution_borough_pct_change |>
+             filter(weather_category != "Normal"),
+    aes(label = paste0(ifelse(pct_change >= 0, "+", ""), pct_change, "%"),
+        hjust = ifelse(weather_category == "Extreme", -0.1, 1.1),
+        vjust = case_when(
+          weather_category == "Extreme" & borough == "Bronx"  ~  1.5,
+          weather_category == "Extreme" & borough == "Queens" ~ -0.5,
+          TRUE                                                 ~  0.5
+        )),
+    size     = 2.8,
+    fontface = "bold"
+  ) +
+  scale_color_brewer(palette = "Set1", name = "Borough") +
+  scale_x_discrete(expand = expansion(mult = c(0.35, 0.45))) +
+  scale_y_continuous(labels = \(x) paste0(x, "%")) +
+  labs(
+    title    = "Weather Sensitivity by Borough (2022-2025)",
+    subtitle = "% change in median resolution time from Normal to Adverse and Extreme weather days",
+    x        = NULL,
+    y        = "% Change from Normal Median",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40", size = 9),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+resolution_borough_slope
+
+# Grouped bar chart: median resolution time by borough and weather category
+resolution_borough_chart <- ggplot(resolution_by_borough_weather,
+       aes(x = borough, y = median_hrs, fill = weather_category)) +
+  geom_col(position = "dodge", width = 0.7) +
+  geom_text(
+    aes(label = round(median_hrs, 1)),
+    position = position_dodge(width = 0.7),
+    vjust    = -0.5,
+    size     = 2.8,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Normal  = "#2ecc71",
+               Adverse = "#f39c12",
+               Extreme = "#e74c3c"),
+    name   = "Weather Category"
+  ) +
+  scale_y_continuous(
+    labels = \(x) paste0(x, " hrs"),
+    expand = expansion(mult = c(0, 0.15))
+  ) +
+  labs(
+    title    = "Median Resolution Time by Borough and Weather Category (2022-2025)",
+    subtitle = "Staten Island shows a decrease in resolution time during Extreme weather",
+    x        = NULL,
+    y        = "Median Resolution Time (hrs)",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+resolution_borough_chart
+
+
+
+```
+Note:  the percentages look so large because Normal baselines are very low
 #### Resolution Time Categories × Weather
 
 <!-- 
@@ -1454,7 +1782,183 @@ WRITING NOTES:
 ```{r resolution-categories-weather}
 # Stacked bar chart: proportion of each resolution category by weather category
 # Shows whether the distribution of resolution types shifts with weather
+
+# Resolution time categories crossed with weather category
+# Adds resolution_category column to the analysis dataset
+resolution_cat_weather <- nyc_311_weather_analysis |>
+  mutate(
+    resolution_category = case_when(
+      resolution_hrs <  0.017 ~ "Instant",
+      resolution_hrs <  1     ~ "Fast",
+      resolution_hrs <  24    ~ "Standard",
+      resolution_hrs <  720   ~ "Extended",
+      TRUE                    ~ "Long-term"
+    ) |> factor(levels = c("Instant", "Fast", "Standard",
+                            "Extended", "Long-term"),
+                ordered = TRUE)
+  ) |>
+  group_by(weather_category, resolution_category) |>
+  summarise(
+    n_requests = n(),
+    .groups    = "drop"
+  ) |>
+  group_by(weather_category) |>
+  mutate(pct = round(n_requests / sum(n_requests) * 100, 1)) |>
+  ungroup()
+
+# Stacked bar chart: resolution time category distribution by weather category
+resolution_cat_weather_chart <- ggplot(resolution_cat_weather,
+       aes(x = weather_category, y = pct, 
+           fill = resolution_category)) +
+  geom_col(width = 0.6) +
+  geom_text(
+    aes(label = paste0(pct, "%")),
+    position = position_stack(vjust = 0.5),
+    size     = 3,
+    fontface = "bold",
+    color    = "white"
+  ) +
+  scale_fill_manual(
+    values = c(
+      Instant   = "#2c3e50",
+      Fast      = "#2980b9",
+      Standard  = "#27ae60",
+      Extended  = "#f39c12",
+      "Long-term" = "#e74c3c"
+    ),
+    name = "Resolution Category"
+  ) +
+  scale_y_continuous(labels = \(x) paste0(x, "%")) +
+  labs(
+    title    = "Resolution Time Category Distribution by Weather (2022-2025)",
+    subtitle = "Extended requests grow during adverse weather while Fast requests decline",
+    x        = NULL,
+    y        = "% of Requests",
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40"),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+resolution_cat_weather_chart
+
 ```
+
+During bad weather requests that would normally be resolved within a day (Fast + Standard) are instead taking 1-30 days (Extended). Weather is essentially pushing a meaningful portion of requests from the Fast and Standard categories into Extended. The long-term and instant categories are largely unaffected by weather conditions.
+
+Instant closures actually increase slightly on Adverse days. 
+
+#####Instant Closures
+
+```{r instant-closures}
+
+# Instant closure rate by agency and weather category
+# Focus on high and low volume agencies excluding NYPD initially
+# to see if other agencies show interesting patterns
+instant_closure_by_agency <- nyc_311_weather_analysis |>
+  mutate(
+    agency      = str_to_upper(str_trim(agency)),
+    is_instant  = resolution_hrs < 0.017
+  ) |>
+  filter(agency %in% c(high_volume_agencies, low_volume_agencies)) |>
+  group_by(agency, weather_category) |>
+  summarise(
+    n_requests      = n(),
+    n_instant       = sum(is_instant),
+    pct_instant     = round(mean(is_instant) * 100, 2),
+    .groups         = "drop"
+  )
+
+# Investigate DEP instant closures on Adverse days
+# Check which complaint types are driving the spike
+nyc_311_weather_analysis |>
+  mutate(
+    agency     = str_to_upper(str_trim(agency)),
+    is_instant = resolution_hrs < 0.017
+  ) |>
+  filter(agency == "DEP", is_instant == TRUE) |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  group_by(weather_category, complaint_type) |>
+  summarise(
+    n_instant = n(),
+    .groups   = "drop"
+  ) |>
+  group_by(weather_category) |>
+  mutate(pct = round(n_instant / sum(n_instant) * 100, 1)) |>
+  ungroup() |>
+  arrange(weather_category, desc(n_instant)) |>
+  group_by(weather_category) |>
+  slice_head(n = 5)
+
+
+# Investigate DSNY instant closures on Extreme days
+nyc_311_weather_analysis |>
+  mutate(
+    agency     = str_to_upper(str_trim(agency)),
+    is_instant = resolution_hrs < 0.017
+  ) |>
+  filter(agency == "DSNY", is_instant == TRUE) |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  group_by(weather_category, complaint_type) |>
+  summarise(
+    n_instant = n(),
+    .groups   = "drop"
+  ) |>
+  group_by(weather_category) |>
+  mutate(pct = round(n_instant / sum(n_instant) * 100, 1)) |>
+  ungroup() |>
+  arrange(weather_category, desc(n_instant)) |>
+  group_by(weather_category) |>
+  slice_head(n = 5)
+
+```
+
+**DOHMH has by far the highest instant closure rate:**
+
+* Normal: 38.5%, Adverse: 34.9%, Extreme: 30.8%
+
+* Nearly 4 in 10 DOHMH requests are closed instantly on Normal days
+
+* Rate actually decreases during bad weather — interesting
+
+**DEP shows a dramatic spike on Adverse days:**
+
+* Normal: 4.13% → Adverse: 19.3% → then drops back to 2.94% on Extreme
+
+* Nearly 1 in 5 DEP requests are instant closures on Adverse days
+
+* WATER SYSTEM complaints are being instantly closed at a dramatically higher rate on Adverse days:
+
++ Normal: 21,924 instant closures out of ~579K total DEP requests (91.7% of DEP instants)
+
++ Adverse: 24,084 instant closures out of ~128K total DEP requests (97.6% of DEP instants)
+
+
+**DSNY shows a spike on Extreme days:**
+
+* Normal: 0.05% → Adverse: 0.07% → Extreme: 9.46%
+
+* A dramatic jump on Extreme days from near-zero to nearly 10%
+
+* On Extreme days, 100% of DSNY instant closures are SNOW OR ICE complaints — all 739 of them. During extreme weather events DSNY is bulk-closing every single Snow or Ice complaint instantly, almost certainly because these are automatically closed when a snow emergency is declared or when DSNY's snow response protocol is activated
+
+* On Adverse days Snow or Ice jumps to 36.8% of DSNY instant closures
+
+**DOB is consistently high:**
+
+* Normal: 11.7%, Adverse: 10.7%, Extreme: 10.2%
+
+* Relatively stable across weather categories
+
+**NYPD is surprisingly low and stable:**
+
+* Normal: 0.5%, Adverse: 0.53%, Extreme: 0.48%
+* Contrary to what we might have expected given the rapid closure finding earlier, NYPD's instant closures are actually a small fraction of their total volume.
+
 
 #### Weather-Sensitive Complaint Types
 
@@ -1469,6 +1973,134 @@ WRITING NOTES:
 ```{r weather-sensitive-complaints}
 # Faceted bar chart: median resolution time by weather category
 # for weather-sensitive complaint types only
+
+# Calculate complaint volume by weather category
+# then compute percentage change from Normal baseline
+# to identify weather-sensitive complaint types
+complaint_weather_volume <- nyc_311_weather_analysis |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  group_by(complaint_type, weather_category) |>
+  summarise(
+    n_requests = n(),
+    .groups    = "drop"
+  ) |>
+  left_join(
+    nyc_311_weather_analysis |>
+      group_by(weather_category) |>
+      summarise(n_days = n_distinct(date), .groups = "drop"),
+    by = "weather_category"
+  ) |>
+  mutate(avg_daily = n_requests / n_days) |>
+  group_by(complaint_type) |>
+  mutate(
+    # Use NA if no Normal day records exist for this complaint type
+    normal_daily = ifelse(
+      any(weather_category == "Normal"),
+      avg_daily[weather_category == "Normal"][1],
+      NA_real_
+    ),
+    pct_change = round((avg_daily - normal_daily) / normal_daily * 100, 1)
+  ) |>
+  ungroup() |>
+  # Exclude complaint types with no Normal day baseline
+  filter(!is.na(normal_daily))
+
+# Show top 20 complaint types with largest spike on Adverse days
+complaint_weather_volume |>
+  filter(
+    weather_category == "Adverse",
+    normal_daily >= 10    # Exclude very low volume types
+  ) |>
+  arrange(desc(pct_change)) |>
+  slice_head(n = 20) |>
+  select(complaint_type, normal_daily, avg_daily, pct_change)
+
+# Show top 20 complaint types with largest spike on Extreme days
+complaint_weather_volume |>
+  filter(
+    weather_category == "Extreme",
+    normal_daily >= 10
+  ) |>
+  arrange(desc(pct_change)) |>
+  slice_head(n = 20) |>
+  select(complaint_type, normal_daily, avg_daily, pct_change)
+
+
+# Define weather-sensitive complaint types identified through data-driven approach
+weather_sensitive_types <- c(
+  "SNOW OR ICE",
+  "HEAT/HOT WATER",
+  "WATER SYSTEM",
+  "DAMAGED TREE",
+  "WATER LEAK"
+)
+
+# Median resolution times for weather-sensitive complaint types
+# by weather category
+resolution_sensitive_types <- nyc_311_weather_analysis |>
+  mutate(complaint_type = str_to_upper(str_trim(complaint_type))) |>
+  filter(complaint_type %in% weather_sensitive_types) |>
+  group_by(complaint_type, weather_category) |>
+  summarise(
+    n_requests = n(),
+    median_hrs = median(resolution_hrs, na.rm = TRUE),
+    .groups    = "drop"
+  )
+
+
+# Compute percentage change from Normal baseline for each complaint type (diverging values for chart)
+resolution_sensitive_pct <- resolution_sensitive_types |>
+  group_by(complaint_type) |>
+  mutate(
+    normal_median = median_hrs[weather_category == "Normal"],
+    pct_change    = round(
+      (median_hrs - normal_median) / normal_median * 100, 1
+    ),
+    abs_change    = round(median_hrs - normal_median, 1)
+  ) |>
+  ungroup() |>
+  filter(weather_category != "Normal")
+
+# Diverging bar chart: % change from Normal baseline
+# Bars extend left (faster) or right (slower) from center baseline
+resolution_sensitive_diverging <- ggplot(resolution_sensitive_pct,
+       aes(x = pct_change,
+           y = reorder(complaint_type, pct_change),
+           fill = weather_category)) +
+  geom_col(position = "dodge", width = 0.6) +
+  geom_vline(xintercept = 0, color = "black", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(ifelse(pct_change >= 0, "+", ""), pct_change, "%"),
+        hjust = ifelse(pct_change >= 0, -0.1, 1.1)),
+    position = position_dodge(width = 0.6),
+    size     = 2.8,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(Adverse = "#f39c12", Extreme = "#e74c3c"),
+    name   = "Weather Category"
+  ) +
+  scale_x_continuous(
+    labels = \(x) paste0(x, "%"),
+    expand = expansion(mult = c(0.2, 0.2))
+  ) +
+  labs(
+    title    = "Weather-Sensitive Complaint Types",
+    subtitle = "% Change from Normal: Left of 0% = faster resolution, Right = slower resolution",
+    x        = "% Change from Normal Median",
+    y        = NULL,
+    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title      = element_text(face = "bold"),
+    plot.subtitle   = element_text(color = "gray40", size = 9),
+    plot.caption    = element_text(color = "gray40"),
+    legend.position = "bottom"
+  )
+
+resolution_sensitive_diverging
+
 ```
 
 ### Statistical Analysis
