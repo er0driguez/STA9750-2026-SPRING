@@ -33,13 +33,16 @@ library(broom)
 
 <!-- 
 WRITING NOTES:
-- Introduce the research question: does adverse weather in NYC affect 311 
-  service request resolution times?
+- Introduce the research question: does adverse weather in NYC affect 311 service request resolution times?
 - Briefly describe the two datasets being used
-- State the time period: January 1, 2022 to December 31, 2025
+- time period: January 1, 2022 to December 31, 2025
 - Mention the five boroughs as the geographic scope
 - End with a brief roadmap of what the report covers
 -->
+
+New York City's [311 service](https://portal.311.nyc.gov/) fields 3-4 million requests each year from all five boroughs that cover a range of issues handled by the city's numerous agencies. In recent years, the slow resolution times of certain responding agencies has come under fire leading to a [closer examination](https://council.nyc.gov/data/311-agency/) of what could possibly take these issues so long to resolve. While much high level work has been done around the basic statistical makeup of 311 service requests, what has been missing is a deeper look into the contributing factors of long resolution times. As part of a larger analysis into [what factors drive 311 service request response and resolution times](https://raulsolanavarro.github.io/STA9750-2026-SPRING/summary_report), I will explore the possible effect that weather may have on 311 service request response times across city agencies. The essential question I'm seeking to answer is *How do weather conditions impact response time across agencies?*
+
+My meteorological research angle is unique from the other factors explored in the main report in that it is largely the only truly unpredictable factor that is  outside of human control quite unlike agency administration or resident income level. Using 311 service request data from [NYC OpenData](https://data.cityofnewyork.us/Social-Services/311-Service-Requests-from-2020-to-Present/erm2-nwe9/about_data) and historical weather data from [Open-Meteo](https://open-meteo.com/) from 2022-2025, I will analyze if and how adverse weather such as high precipitation, snow, or extreme heat/cold can affect the composition of complaints lodged and how fast agencies respond to service requests. I will further drill in at the borough level to see if there are any significant differences in response time across boroughs to take into account that different borough geographies may experience adverse weather differently (eg Park Slope experiences flooding more than the higher elevated Washington Heights). 
 
 ## Data Sources
 
@@ -62,6 +65,26 @@ WRITING NOTES:
   * Table of thresholds with sources (NWS, NYC OEM)
   * Explain the Normal/Adverse/Extreme categorization logic
 -->
+
+For this analysis, I joined two data sets spatially by latitude and longitude coordinates:
+
+#### NYC OpenData: 311 Service Requests from 2020 to Present
+
+* Main repository of inbound 311 Service Requests with key request details for analysis: *creation/closure date*, *issue type and details*, *responding agency*, *latitude/longitude coordinates*.
+
+* For 2022-2025, there were ~13M service request records 
+
+* Although very detailed, the volume of data and missing fields can pose data preparation and cleaning issues.
+
+
+#### Open-Meteo
+
+* API that provides historical weather data from National Weather Service. 
+
+* Reliable and accurate data with various measures of precipitation and temperature. The meticulous level of detail can help ensure our weather assessments aren’t too broad.
+
+* Will help assess weather conditions for each day of analysis. 
+
 
 ## Data Acquisition & Preparation
 
@@ -171,16 +194,6 @@ n_weather_rows     <- nrow(weather)
 
 ```
 
-**Snapshot of Data Acquired**
-
-* Of the `r comma(n_total)` records, `r comma(n_missing_coords)` (`r pct_missing_coords`%) lacked geographic coordinates and could not be matched to a weather point.
-
-* The 311 dataset spans `r date_start_311` to `r date_end_311`, containing `r comma(n_total)` closed service requests.
-
-* Of all records, `r comma(n_matched_weather)` (`r pct_matched_weather`%) were successfully matched to a weather point.
-
-* The median resolution time across all requests was `r median_res_hrs` hours.
-
 **Data Acquisition**
 
 Created a separate script that is run once manually to download and cache all data into parquet files. Due to high volume of 311 data (~13 million rows), the initial fetch takes around 40 minutes and caching helps prevent running and downloading this data from square one every time a change is made. The parquet files produced sit on disk and this report will just read them in order to perform analysis. 
@@ -209,19 +222,26 @@ Note on Excluded Records after Join: Joining on if there is a borough and lat/lo
 
 phone-submitted requests often don't have precise location data
 
+**Snapshot of Data Acquired**
 
+::: {.callout-note appearance="simple" title="Acquired Data Snapshot" icon=false}
 
-```{r data-prep-summary}
-# Summary statistics of the cleaned datasets to validate acquisition
-# This chunk will display a brief summary table confirming row counts,
-# date ranges, and borough coverage for both datasets
-```
+* `r comma(n_total)` service request records acquired from NYC OpenData, 23,376 from Open-Meteo (16 weather points x 1,461 days)
+  + `r comma(n_missing_coords)` (`r pct_missing_coords`%) 311 records lacked geographic coordinates and could not be matched to a weather point.
+  + Of all records, `r comma(n_matched_weather)` (`r pct_matched_weather`%) were successfully matched to a weather point.
 
-## EDA: NYC 311 Requests & Weather in NYC
+* The 311 data set spans `r date_start_311` to `r date_end_311` and only records that were marked as closed service requests were selected.
+
+* The median resolution time across all requests was `r median_res_hrs` hours.
+
+:::
+
+:::{.callout-important appearance="simple" title="Limitations in Analysis" icon=false}
 
 ### Limitations in Analysis
 
 **Data Limitations**
+
 * 193,283 records (1.46%) missing coordinates could not be spatially matched to weather data and receive NA weather fields
 
 * 16 weather coordinate points represent borough-level conditions but cannot capture hyper-local microclimate variation within boroughs
@@ -231,6 +251,7 @@ phone-submitted requests often don't have precise location data
 * Open-Meteo uses ERA5 reanalysis model rather than direct station readings — modeled estimates rather than observed measurements
 
 **Methodological Limitations**
+
 * Resolution time is used as a proxy for service quality — a closed request does not necessarily mean the issue was resolved satisfactorily
 
 * Sub-1-minute closures (316,472 records / 2.4%) likely represent automated or duplicate closures rather than genuine resolutions — their inclusion may affect agency-level averages
@@ -242,11 +263,14 @@ phone-submitted requests often don't have precise location data
 * Analysis is correlational — weather conditions are associated with resolution time changes but causation cannot be established from observational data alone
 
 **Scope Limitations**
+
 * Four year window (2022-2025) may not capture longer-term seasonal patterns or anomalous weather years
 
 * Borough is the finest geographic unit for weather matching — community district and neighborhood level variation in both weather and service delivery is not captured
 
+:::
 
+## EDA: NYC 311 Requests & Weather in NYC
 
 ### Weather Patterns in NYC (2022–2025)
 
@@ -425,9 +449,9 @@ WRITING NOTES:
 - Note seasonal patterns and any notable storms
 -->
 
-```{r precipitation-trends}
-# Time series or bar chart: monthly precipitation and snowfall totals
-# Consider showing by borough to highlight coastal vs inland differences
+```{r precipitation-trends-1}
+#| results: false
+# Showing by borough to highlight possible coastal vs inland differences
 
 # Check variability of precipitation and snowfall across boroughs
 weather |>
@@ -438,7 +462,9 @@ weather |>
     total_precip = sum(precip_in,    na.rm = TRUE),
     total_snow   = sum(snowfall_in,  na.rm = TRUE)
   )
+```
 
+```{r precipitation-trends-2}
 # Aggregate daily precipitation and snowfall to NYC-wide monthly totals
 # Step 1: average across all 16 weather points for each day to get a single city-wide daily value, correcting for Queens having 4 points vs 3 for other boroughs
 # Step 2: sum daily values to monthly totals
@@ -461,9 +487,7 @@ weather_precip_monthly <- weather |>
   )
 
 
-# Pivot to long format for faceted visualization
-# This allows ggplot to facet by variable (precipitation vs snowfall)
-# while sharing the same x axis
+# Pivot to long format for faceted visualization to allow ggplot to facet by variable (precipitation vs snowfall) while sharing the same x axis
 weather_precip_long <- weather_precip_monthly |>
   pivot_longer(
     cols      = c(total_precip, total_snow),
@@ -517,11 +541,9 @@ weather_precip_snow
 
 * October 2022 stands out as an unusually wet month - storm/hurricane?
 
-* 2023 was the wettest year across all boroughs
+* 2023 was the wettest year across all boroughs while 2025 appears to be the driest
 
-* 2025 appears to be the driest (though it may be incomplete depending on when the data ends)
-
-* Borough differences are minimal — roughly 1-2 inches variation in any given year
+* Borough differences are minimal with roughly 1-2 inches variation in any given year
 
 **Snowfall:**
 
@@ -539,6 +561,8 @@ WRITING NOTES:
 - Helps reader see clustering of adverse/extreme events across the year
 - Could be a useful reference for the analysis section
 -->
+
+*Hover over calendar for more detailed borough weather information by month and year*
 
 ```{r weather-calendar}
 # Heatmap: weather category by day of year, faceted by year
@@ -635,24 +659,17 @@ ggplotly(weather_adverse_heatmap, tooltip = "text")
 
 ```
 
-Winter months (Jan/Feb) show the darkest reds across all boroughs — high proportion of adverse/extreme days driven by cold temperatures
+* Winter months (Jan/Feb) show the darkest reds across all boroughs indicating high proportion of adverse/extreme days driven by cold temperatures
+  + January 2022 Bronx shows 77% adverse/extreme days a very cold January which matches our earlier findings
 
-Summer months show lighter colors with some mid-range reds in July/August — heat events
+* Summer months show lighter colors with some mid-range reds in July/August indicating heat events
 
-January 2022 Bronx shows 77% adverse/extreme days — a very cold January which matches our earlier findings
+  + July and August 2022 have highest percentage of adverse days likely due to heat events (32%)
 
-July and August 2022 show 32% adverse days — likely heat events
-
-The pattern is consistent across boroughs which reinforces our earlier finding that weather conditions don't vary dramatically between boroughs
+* Patterns are consistent across boroughs which reinforces our earlier finding that weather conditions don't vary dramatically between boroughs
 
 
 ### 311 Service Request Overview
-
-<!-- 
-WRITING NOTES:
-- This is the EDA section for the 311 dataset
-- Give the reader a full picture of the 311 data before the analysis
--->
 
 #### Request Volume
 
@@ -749,17 +766,15 @@ requests_growth_chart
 
 ```
 
-Brooklyn consistently has the highest volume of requests and has shown consistent year over year growth
+* Brooklyn consistently has the highest volume of requests and has shown consistent year over year growth
 
-Bronx dipped in 2023 and rebounded in 2024 and 2025.
+* Staten Island the lowest (and relatively flat growth across all four years)
 
-Staten Island the lowest (and relatively flat across all four years)
+* Manhattan Shows steady but modest growth from 618,835 in 2022 to 703,589 in 2025 — about 14% increase over the period (2022 was notably lower)
 
-Manhattan Shows steady but modest growth from 618,835 in 2022 to 703,589 in 2025 — about 14% increase over the period (2022 was notably lower)
+* Queens Shows the strongest and most consistent growth of any borough — from 703,600 in 2022 to 850,735 in 2025, a 21% increase over the period. Queens surpassed Manhattan in every year despite having a comparable population, which is interesting given that Manhattan is the most densely populated borough. The gap between Queens and Manhattan widens each year suggesting Queens residents are increasingly engaging with 311
 
-Queens Shows the strongest and most consistent growth of any borough — from 703,600 in 2022 to 850,735 in 2025, a 21% increase over the period. Queens surpassed Manhattan in every year despite having a comparable population, which is interesting given that Manhattan is the most densely populated borough. The gap between Queens and Manhattan widens each year suggesting Queens residents are increasingly engaging with 311
-
-Brooklyn, Queens, and the Bronx are all growing faster than Manhattan and Staten Island
+* Brooklyn, Queens, and the Bronx are all growing faster than Manhattan and Staten Island
 
 
 #### Top Complaint Types and Agencies
@@ -1306,10 +1321,9 @@ Snow: 19.7 hrs — significant impact, only appears as Extreme.
 
 Snow and Extreme Cold are the most disruptive — both above 19 hrs, with Extreme Cold reaching 25.3 hrs — over 4x the Normal median
 
-```{r resolution-by-weather-agency}
-
-# Median resolution time by agency and weather category
-# Includes all agencies — we can filter down later if needed
+```{r resolution-by-weather-agency-aggregration}
+#| cache: true
+# Median resolution time by agency and weather category - Includes all agencies
 resolution_by_agency_weather <- nyc_311_weather_analysis |>
   mutate(agency = str_to_upper(str_trim(agency))) |>
   group_by(agency, weather_category) |>
@@ -1319,24 +1333,26 @@ resolution_by_agency_weather <- nyc_311_weather_analysis |>
     .groups    = "drop"
   )
 
+# Free memory after heavy operation
+gc()
+
 # Split agencies into high and low volume groups
 # High volume: > 100,000 requests on Normal days
 # Low volume: < 100,000 requests on Normal days
 # OOS and OTI excluded due to insufficient sample size
-
-high_volume_agencies <- c("NYPD", "HPD", "DSNY", "DOT", "DEP", 
+high_volume_agencies <- c("NYPD", "HPD", "DSNY", "DOT", "DEP",
                            "DPR", "DOB", "DOHMH")
 
 low_volume_agencies  <- c("TLC", "DCWP", "DHS", "EDC", "DOE")
 
-# Create two filtered datasets for visualization
+# Create two filtered datas ets for visualization
 resolution_agency_high <- resolution_by_agency_weather |>
   filter(agency %in% high_volume_agencies)
 
 resolution_agency_low <- resolution_by_agency_weather |>
   filter(agency %in% low_volume_agencies)
 
-# 3. Then: compute percentage change from Normal baseline
+# Compute percentage change from Normal baseline for each agency
 resolution_agency_pct_change <- resolution_by_agency_weather |>
   filter(agency %in% c(high_volume_agencies, low_volume_agencies)) |>
   group_by(agency) |>
@@ -1351,7 +1367,27 @@ resolution_agency_pct_change <- resolution_by_agency_weather |>
       agency %in% low_volume_agencies  ~ "Lower Volume Agencies"
     )
   )
+```
 
+```{r resolution-agency-charts}
+# Define a consistent color per agency across both volume groups
+agency_colors <- c(
+  # High volume
+  "NYPD"  = "#2980b9",
+  "HPD"   = "#e74c3c",
+  "DSNY"  = "#f39c12",
+  "DOT"   = "#27ae60",
+  "DEP"   = "#8e44ad",
+  "DPR"   = "#16a085",
+  "DOB"   = "#d35400",
+  "DOHMH" = "#c0392b",
+  # Low volume
+  "TLC"   = "#2c3e50",
+  "DCWP"  = "#7f8c8d",
+  "DHS"   = "#1abc9c",
+  "EDC"   = "#e67e22",
+  "DOE"   = "#9b59b6"
+)
 
 # Bar chart: median resolution time by agency and weather category
 # High volume agencies
@@ -1429,75 +1465,10 @@ resolution_agency_low_chart <- ggplot(resolution_agency_low,
 
 resolution_agency_high_chart
 resolution_agency_low_chart
+```
 
-# Define a consistent color per agency across both volume groups
-agency_colors <- c(
-  # High volume
-  "NYPD"  = "#2980b9",
-  "HPD"   = "#e74c3c",
-  "DSNY"  = "#f39c12",
-  "DOT"   = "#27ae60",
-  "DEP"   = "#8e44ad",
-  "DPR"   = "#16a085",
-  "DOB"   = "#d35400",
-  "DOHMH" = "#c0392b",
-  # Low volume
-  "TLC"   = "#2c3e50",
-  "DCWP"  = "#7f8c8d",
-  "DHS"   = "#1abc9c",
-  "EDC"   = "#e67e22",
-  "DOE"   = "#9b59b6"
-)
-
-# Slope chart: % change from Normal baseline colored by agency
-resolution_agency_slope <- ggplot(
-    resolution_agency_pct_change |> filter(weather_category != "Normal"),
-    aes(x = weather_category, y = pct_change,
-        group = agency, color = agency)) +
-  # Strong dashed reference line at 0%
-  geom_hline(
-    yintercept = 0,
-    linetype   = "dashed",
-    color      = "turquoise",
-    linewidth  = 1
-  ) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 3) +
-  geom_text(
-    data = resolution_agency_pct_change |>
-             filter(weather_category == "Extreme"),
-    aes(label = paste0(agency, " (", pct_change, "%)"),
-        vjust = case_when(
-          agency == "DSNY"  ~ -0.5,
-          agency == "DEP"   ~  0,
-          TRUE              ~  -0.25
-        )),
-    hjust    = -0.1,
-    size     = 2.8,
-    fontface = "bold"
-  ) +
-  scale_color_manual(values = agency_colors, name = "Agency") +
-  scale_x_discrete(expand = expansion(mult = c(0.05, 0.45))) +
-  scale_y_continuous(labels = \(x) paste0(x, "%")) +
-  facet_wrap(~ volume_group, scales = "free_y") +
-  labs(
-    title    = "Weather Sensitivity by Agency — % Change from Normal",
-    subtitle = "Median Resolution Time During Bad Weather: Lines above 0% = slower resolution, Lines Below 0% = faster resolution",
-    x        = NULL,
-    y        = "% Change from Normal Weather Median",
-    caption  = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
-  ) +
-  theme_bw() +
-  theme(
-    plot.title      = element_text(face = "bold"),
-    plot.subtitle   = element_text(color = "gray40", size = 8),
-    plot.caption    = element_text(color = "gray40"),
-    legend.position = "none",
-    strip.text      = element_text(face = "bold")
-  )
-
-resolution_agency_slope
-
+```{r resolution-agency-condition}
+#| cache: true
 # Agency x weather condition breakdown
 # Separating Extreme Cold, Snow, Heat and Rain into distinct conditions
 # All agencies except NYPD
@@ -1523,18 +1494,22 @@ resolution_agency_condition <- nyc_311_weather_analysis |>
     .groups    = "drop"
   )
 
+# Free memory after heavy operation
+gc()
+
 # Compute overall median from full dataset per agency — must use the
 # full resolution time distribution not the condition-level medians
 agency_overall_median <- nyc_311_weather_analysis |>
   mutate(agency = str_to_upper(str_trim(agency))) |>
-  filter(
-    agency %in% c(high_volume_agencies, low_volume_agencies),
-  ) |>
+  filter(agency %in% c(high_volume_agencies, low_volume_agencies)) |>
   group_by(agency) |>
   summarise(
     overall_median = median(resolution_hrs, na.rm = TRUE),
     .groups = "drop"
   )
+
+# Free memory after heavy operation
+gc()
 
 # Join overall median, compute percentage change and flag low sample sizes
 resolution_agency_condition <- resolution_agency_condition |>
@@ -1546,7 +1521,9 @@ resolution_agency_condition <- resolution_agency_condition |>
     # Flag low sample size cells for grey overlay
     low_sample = n_requests < 1000
   )
+```
 
+```{r resolution-agency-condition-heatmap}
 # Heatmap: % change from overall median by agency and weather condition
 resolution_agency_condition_heatmap <- ggplot(resolution_agency_condition,
        aes(x = condition_group, y = agency,
@@ -1567,7 +1544,8 @@ resolution_agency_condition_heatmap <- ggplot(resolution_agency_condition,
     fontface = "bold",
     color    = "black"
   ) +
-  # Label for low sample size cells
+  # Label for low sample size cells — shows value with italic styling
+  # to signal lower reliability to the reader
   geom_text(
     data     = resolution_agency_condition |> filter(low_sample),
     aes(label = paste0(pct_change_from_overall, "%*")),
@@ -1600,8 +1578,8 @@ resolution_agency_condition_heatmap <- ggplot(resolution_agency_condition,
   )
 
 resolution_agency_condition_heatmap
-
 ```
+
 **Agency Standouts**
 
 **Weather Insensitive Agencies**
@@ -1768,6 +1746,7 @@ resolution_borough_chart
 
 ```
 Note:  the percentages look so large because Normal baselines are very low
+
 #### Resolution Time Categories × Weather
 
 <!-- 
@@ -1852,9 +1831,10 @@ During bad weather requests that would normally be resolved within a day (Fast +
 
 Instant closures actually increase slightly on Adverse days. 
 
-#####Instant Closures
+##### Instant Closures
 
-```{r instant-closures}
+```{r instant-closures-1}
+#| results: false
 
 # Instant closure rate by agency and weather category
 # Focus on high and low volume agencies excluding NYPD initially
@@ -1970,7 +1950,8 @@ WRITING NOTES:
 - Compare resolution times for these types on Normal vs Adverse vs Extreme days
 -->
 
-```{r weather-sensitive-complaints}
+```{r weather-sensitive-complaints-1}
+#| results: false
 # Faceted bar chart: median resolution time by weather category
 # for weather-sensitive complaint types only
 
@@ -2060,7 +2041,9 @@ resolution_sensitive_pct <- resolution_sensitive_types |>
   ) |>
   ungroup() |>
   filter(weather_category != "Normal")
+```
 
+```{r weather-sensitive-complaints-2}
 # Diverging bar chart: % change from Normal baseline
 # Bars extend left (faster) or right (slower) from center baseline
 resolution_sensitive_diverging <- ggplot(resolution_sensitive_pct,
@@ -2118,11 +2101,140 @@ WRITING NOTES:
 -->
 
 ```{r statistical-analysis}
-# Step 1: Log-transform resolution times
-# Step 2: One-way ANOVA: log(resolution_hrs) ~ weather_category
-# Step 3: Tukey's HSD post-hoc test
-# Step 4: Display results in a gt() table
+# Linear regression: log(resolution_hrs) ~ weather_category + agency + borough
+# Log-transform resolution time to address heavy right skew
+# weather_category reference level is Normal — coefficients for Adverse and Extreme show change relative to Normal days
+# Agency and borough included as controls to isolate weather effect
+
+# Remove zero resolution times before log transformation
+regression_data <- nyc_311_weather_analysis |>
+  filter(resolution_hrs > 0) |>
+  mutate(
+    log_resolution = log(resolution_hrs),
+    agency         = str_to_upper(str_trim(agency)),
+    # Set Normal as reference level for weather_category
+    weather_category = factor(
+      as.character(weather_category),
+      levels = c("Normal", "Adverse", "Extreme")
+    ),
+    agency = relevel(factor(agency), ref = "NYPD")
+  )
+
+# Fit the model
+resolution_model <- lm(
+  log_resolution ~ weather_category + agency + borough,
+  data = regression_data
+)
+
+# Extract tidy coefficients and model fit
+model_coefficients <- tidy(resolution_model, conf.int = TRUE)
+model_fit          <- glance(resolution_model)
+
+# Display key weather category coefficients
+# Back-transform from log scale: exp(coefficient) gives the multiplier
+model_coefficients |>
+  filter(str_detect(term, "weather_category")) |>
+  mutate(
+    multiplier  = round(exp(estimate), 3),
+    pct_change  = round((exp(estimate) - 1) * 100, 1)
+  ) |>
+  select(term, estimate, multiplier, pct_change, conf.low, conf.high)
+
+# Shows weather category coefficients back-transformed to multipliers
+# and key model fit statistics
+
+# Weather coefficients table
+regression_table <- model_coefficients |>
+  filter(str_detect(term, "weather_category|Intercept")) |>
+  mutate(
+    term       = recode(term,
+      "(Intercept)"             = "Intercept (Normal days)",
+      "weather_categoryAdverse" = "Adverse Weather",
+      "weather_categoryExtreme" = "Extreme Weather"
+    ),
+    multiplier = round(exp(estimate), 3),
+    pct_change = round((exp(estimate) - 1) * 100, 1)
+  ) |>
+  select(term, estimate, multiplier, pct_change, conf.low, conf.high) |>
+  gt() |>
+  tab_header(
+    title    = "Regression Results: Weather Effect on Log Resolution Time",
+    subtitle = "log(resolution_hrs) Holding Agency and Borough Constant"
+  ) |>
+  cols_label(
+    term       = "Term",
+    estimate   = "Coefficient",
+    multiplier = "Multiplier",
+    pct_change = "% Change",
+    conf.low   = "95% CI Lower",
+    conf.high  = "95% CI Upper"
+  ) |>
+  fmt_number(
+    columns  = c(estimate, multiplier, conf.low, conf.high),
+    decimals = 3
+  ) |>
+  fmt_number(columns = pct_change, decimals = 1, suffix = "%") |>
+  cols_align(align = "left",  columns = term) |>
+  cols_align(align = "center", 
+             columns = c(estimate, multiplier, pct_change, 
+                         conf.low, conf.high)) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#f2f2f2"),
+    locations = cells_body(rows = seq(1, 3, by = 2))
+  ) |>
+  # Add model fit statistics as a footnote
+  tab_footnote(
+    footnote  = paste0(
+      "Adjusted R-squared: ", round(model_fit$adj.r.squared, 3),
+      " | Observations: ", scales::comma(model_fit$nobs),
+      " | Reference category: Normal weather days"
+    ),
+    locations = cells_title(groups = "title")
+  ) |>
+  tab_source_note(
+    source_note = "Sources: NYC Open Data — 311 Service Requests; Open-Meteo Historical Archive API (2022-2025)"
+  )
+
+regression_table
+
+
 ```
+
+#### Linear Regression Model
+
+A simple linear regression model gives us a bit more detail on the relationship between resolution time and the predictor variables, weather, agency, and borough. While this can't establish causation we can see some association that isolates the pure weather effect after removing compositional differences caused by agency and borough. Weather category is the main predictor of interest with Normal as the reference category so the coefficients for Adverse and Extreme tell us how much longer (or shorter) resolution times are compared to Normal days. I log transform the resolution times to handle the right skew of the data. With 13M rows of data, the p-values will all be essentially zero and not too useful, so I'm focusing on the coefficients of the model and adjusted R^2.
+
+From the model coefficients, we see that the coefficients are negative for both Adverse (-0.071) and Extreme (-0.249) weather categories, which is counter intuitive given the median analysis earlier showed longer resolution times during bad weather. The key difference is that regression holds agency and borough constant so once you account for the fact that adverse weather days have a different mix of agencies and boroughs filing complaints, the net weather effect on log resolution time is actually slightly negative.
+
+**Key Findings**
+
+1. Controlling for agency and borough, Adverse weather is associated with -6.8% change in resolution time and Extreme weather with -22.1% from Normal
+
+2. Agency is the dominant predictor — far more variation in resolution times is explained by which agency handles a request than by weather conditions
+
+3. Adjusted R-squared of 0.649 means the model explains 64.9% of variation in log resolution times. The agency coefficients are doing most of the heavy lifting with NYPD (-4.29) and EDC (+3.01) showing enormous differences in baseline resolution times.
+
+4. Borough effects are modest — Manhattan shows the largest borough effect (-32.9% from Bronx baseline) while Queens shows the smallest (-9.1%)
+
+
+**Important Caveat** 
+
+The negative weather coefficients seem to contradict the earlier median analysis. This can be explained by the following:
+
+* The regression controls for agency and borough composition, which changes on adverse weather days
+
+* During adverse weather certain complaint types (HEAT/HOT WATER, SNOW OR ICE) surge and these are handled by agencies with different baseline resolution times
+
+* The regression is isolating the pure weather effect after removing agency and borough composition effects
+
+* The median analysis was showing the total weather effect including composition changes
+
+* the raw weather effect we observed in the medians is partially explained by the composition of complaints filed during adverse weather, not purely by weather itself.
+
 
 ## Interactive Map
 
